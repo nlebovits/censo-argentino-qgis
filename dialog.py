@@ -26,7 +26,8 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.comboYear.currentIndexChanged.connect(self.on_year_changed)
         self.comboGeoLevel.currentIndexChanged.connect(self.on_geo_level_changed)
         self.comboEntityType.currentIndexChanged.connect(self.on_entity_type_changed)
-        self.listVariables.itemSelectionChanged.connect(self.on_variable_changed)
+        self.listVariables.itemChanged.connect(self.on_variable_changed)
+        self.searchVariables.textChanged.connect(self.on_search_changed)
         self.btnLoad.clicked.connect(self.on_load_clicked)
 
         # Load initial data
@@ -85,6 +86,8 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             for code, label in geo_codes:
                 item = QtWidgets.QListWidgetItem(label)
                 item.setData(Qt.UserRole, code)
+                item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+                item.setCheckState(Qt.Unchecked)
                 self.listGeoFilter.addItem(item)
 
             self.progressBar.hide()
@@ -119,6 +122,8 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             for code, label in variables:
                 item = QtWidgets.QListWidgetItem(f"{code} - {label}")
                 item.setData(Qt.UserRole, code)
+                item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+                item.setCheckState(Qt.Unchecked)
                 self.listVariables.addItem(item)
                 self.variables[code] = label
 
@@ -136,32 +141,59 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                 Qgis.Critical
             )
 
+    def on_search_changed(self):
+        """Filter variables list based on search text"""
+        search_text = self.searchVariables.text().lower()
+
+        for i in range(self.listVariables.count()):
+            item = self.listVariables.item(i)
+            item_text = item.text().lower()
+
+            # Show item if search text is in the item text, hide otherwise
+            item.setHidden(search_text not in item_text)
+
     def on_variable_changed(self):
-        """Update description when variables are selected"""
-        selected_items = self.listVariables.selectedItems()
-        if len(selected_items) == 1:
-            code = selected_items[0].data(Qt.UserRole)
-            if code in self.variables:
-                self.lblDescription.setText(self.variables[code])
-        elif len(selected_items) > 1:
-            self.lblDescription.setText(f"{len(selected_items)} variables selected")
+        """Update description when variables are checked"""
+        checked_count = 0
+        last_checked_code = None
+
+        for i in range(self.listVariables.count()):
+            item = self.listVariables.item(i)
+            if item.checkState() == Qt.Checked:
+                checked_count += 1
+                last_checked_code = item.data(Qt.UserRole)
+
+        if checked_count == 1 and last_checked_code in self.variables:
+            self.lblDescription.setText(self.variables[last_checked_code])
+        elif checked_count > 1:
+            self.lblDescription.setText(f"{checked_count} variables selected")
         else:
             self.lblDescription.setText("")
 
     def on_load_clicked(self):
-        """Load layers for selected census variables"""
-        selected_items = self.listVariables.selectedItems()
+        """Load layers for checked census variables"""
+        # Get checked variables
+        checked_variables = []
+        for i in range(self.listVariables.count()):
+            item = self.listVariables.item(i)
+            if item.checkState() == Qt.Checked:
+                checked_variables.append(item)
 
-        if not selected_items:
-            self.lblDescription.setText("Please select at least one variable")
+        if not checked_variables:
+            self.lblDescription.setText("Please check at least one variable")
             return
 
         geo_level = self.comboGeoLevel.currentData()
-        variable_codes = [item.data(Qt.UserRole) for item in selected_items]
+        variable_codes = [item.data(Qt.UserRole) for item in checked_variables]
 
-        # Get selected geographic filters (optional)
-        geo_filter_items = self.listGeoFilter.selectedItems()
-        geo_filters = [item.data(Qt.UserRole) for item in geo_filter_items] if geo_filter_items else None
+        # Get checked geographic filters (optional)
+        checked_geo_filters = []
+        for i in range(self.listGeoFilter.count()):
+            item = self.listGeoFilter.item(i)
+            if item.checkState() == Qt.Checked:
+                checked_geo_filters.append(item.data(Qt.UserRole))
+
+        geo_filters = checked_geo_filters if checked_geo_filters else None
 
         self.lblDescription.setText("")
         self.progressBar.show()

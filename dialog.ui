@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>250</height>
+    <width>600</width>
+    <height>700</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>500</width>
+    <height>600</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>Censo Argentino</string>
@@ -46,11 +52,11 @@
      <property name="maximumSize">
       <size>
        <width>16777215</width>
-       <height>80</height>
+       <height>120</height>
       </size>
      </property>
      <property name="selectionMode">
-      <enum>QAbstractItemView::ExtendedSelection</enum>
+      <enum>QAbstractItemView::NoSelection</enum>
      </property>
     </widget>
    </item>
@@ -67,14 +73,24 @@
    <item>
     <widget class="QLabel" name="label_2">
      <property name="text">
-      <string>Variables (select multiple):</string>
+      <string>Variables (check multiple):</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLineEdit" name="searchVariables">
+     <property name="placeholderText">
+      <string>Search variables...</string>
+     </property>
+     <property name="clearButtonEnabled">
+      <bool>true</bool>
      </property>
     </widget>
    </item>
    <item>
     <widget class="QListWidget" name="listVariables">
      <property name="selectionMode">
-      <enum>QAbstractItemView::ExtendedSelection</enum>
+      <enum>QAbstractItemView::NoSelection</enum>
      </property>
     </widget>
    </item>
