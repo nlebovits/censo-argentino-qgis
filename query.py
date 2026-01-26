@@ -137,16 +137,22 @@ def get_variables(entity_type=None, progress_callback=None):
         raise Exception(f"Error loading variables: {str(e)}")
 
 
-def load_census_layer(variable_code, geo_level="RADIO", geo_filters=None, bbox=None, progress_callback=None):
-    """Run DuckDB join and return QgsVectorLayer with census data
+def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=None, progress_callback=None):
+    """Run DuckDB join and return QgsVectorLayer with census data for multiple variables
 
     Args:
-        variable_code: Census variable code
+        variable_codes: List of census variable codes (or single code as string)
         geo_level: Geographic level - "RADIO", "FRACC", "DEPTO", or "PROV"
         geo_filters: Optional list of geographic codes to filter by
         bbox: Optional bounding box (xmin, ymin, xmax, ymax) in EPSG:4326
         progress_callback: Optional callback for progress updates
+
+    Returns:
+        QgsVectorLayer with geometry and one column per variable
     """
+    # Allow single variable as string
+    if isinstance(variable_codes, str):
+        variable_codes = [variable_codes]
     try:
         if progress_callback:
             progress_callback(5, "Connecting to data source...")
@@ -187,9 +193,10 @@ def load_census_layer(variable_code, geo_level="RADIO", geo_filters=None, bbox=N
 
         config = geo_config[geo_level]
 
-        # Build WHERE clause with geographic filters
-        where_clause = "c.codigo_variable = ?"
-        query_params = [variable_code]
+        # Build WHERE clause with geographic and variable filters
+        variable_placeholders = ', '.join(['?' for _ in variable_codes])
+        where_clause = f"c.codigo_variable IN ({variable_placeholders})"
+        query_params = list(variable_codes)
 
         if geo_filters and len(geo_filters) > 0:
             # Build filter based on geo_level
@@ -228,13 +235,23 @@ def load_census_layer(variable_code, geo_level="RADIO", geo_filters=None, bbox=N
             where_clause += " AND ST_Intersects(g.geometry, ST_MakeEnvelope(?, ?, ?, ?, 4326))"
             query_params.extend([xmin, ymin, xmax, ymax])
 
+        # Build pivot aggregation for each variable
+        pivot_columns = []
+        for var_code in variable_codes:
+            if config["dissolve"]:
+                pivot_columns.append(f"SUM(CASE WHEN c.codigo_variable = '{var_code}' THEN c.conteo ELSE 0 END) as \"{var_code}\"")
+            else:
+                pivot_columns.append(f"MAX(CASE WHEN c.codigo_variable = '{var_code}' THEN c.conteo ELSE NULL END) as \"{var_code}\"")
+
+        pivot_sql = ',\n                    '.join(pivot_columns)
+
         if config["dissolve"]:
-            # Aggregate geometries and sum data
+            # Aggregate geometries and sum data for each variable
             query = f"""
                 SELECT
-                    {config['id_field']} as {config['id_alias']},
+                    {config['id_field']} as geo_id,
                     ST_AsText(ST_Union_Agg(g.geometry)) as wkt,
-                    SUM(c.conteo) as conteo
+                    {pivot_sql}
                 FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet' g
                 JOIN 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
                     ON g.COD_2022 = c.id_geo
@@ -245,13 +262,14 @@ def load_census_layer(variable_code, geo_level="RADIO", geo_filters=None, bbox=N
             # No aggregation needed for RADIO level
             query = f"""
                 SELECT
-                    {config['id_field']} as {config['id_alias']},
+                    {config['id_field']} as geo_id,
                     ST_AsText(g.geometry) as wkt,
-                    c.conteo
+                    {pivot_sql}
                 FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet' g
                 JOIN 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
                     ON g.COD_2022 = c.id_geo
                 WHERE {where_clause}
+                GROUP BY {config['id_field']}, g.geometry
             """
 
         if progress_callback:
@@ -266,15 +284,21 @@ def load_census_layer(variable_code, geo_level="RADIO", geo_filters=None, bbox=N
         if progress_callback:
             progress_callback(50, "Creating layer...")
 
-        # Create memory layer
-        layer = QgsVectorLayer("Polygon?crs=EPSG:4326", f"Censo - {variable_code} ({geo_level})", "memory")
+        # Create layer name with variable list
+        if len(variable_codes) == 1:
+            layer_name = f"Censo - {variable_codes[0]} ({geo_level})"
+        else:
+            layer_name = f"Censo - {len(variable_codes)} variables ({geo_level})"
+
+        layer = QgsVectorLayer("Polygon?crs=EPSG:4326", layer_name, "memory")
         provider = layer.dataProvider()
 
-        # Add fields
-        provider.addAttributes([
-            QgsField("geo_id", QVariant.String),
-            QgsField("conteo", QVariant.Double)
-        ])
+        # Add fields: geo_id + one field per variable
+        fields = [QgsField("geo_id", QVariant.String)]
+        for var_code in variable_codes:
+            fields.append(QgsField(var_code, QVariant.Double))
+
+        provider.addAttributes(fields)
         layer.updateFields()
 
         if progress_callback:
@@ -293,7 +317,15 @@ def load_census_layer(variable_code, geo_level="RADIO", geo_filters=None, bbox=N
                 raise Exception(f"Invalid geometry for feature {row['geo_id']}")
 
             feature.setGeometry(geom)
-            feature.setAttributes([row['geo_id'], float(row['conteo'])])
+
+            # Set attributes: geo_id + all variable values
+            attributes = [row['geo_id']]
+            for var_code in variable_codes:
+                val = row[var_code]
+                # Handle NaN/NULL values
+                attributes.append(float(val) if val is not None and str(val) != 'nan' else None)
+
+            feature.setAttributes(attributes)
             features.append(feature)
 
             # Update progress every 100 features

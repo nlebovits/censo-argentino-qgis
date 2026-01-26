@@ -227,61 +227,39 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.progressBar.setValue(0)
         self.btnLoad.setEnabled(False)
 
-        loaded_count = 0
-        error_count = 0
-
         try:
-            for idx, var_code in enumerate(variable_codes):
-                try:
-                    # Update progress for multi-variable load
-                    base_progress = int((idx / len(variable_codes)) * 100)
+            # Load single layer with all variables
+            layer = load_census_layer(
+                variable_codes,
+                geo_level=geo_level,
+                geo_filters=geo_filters,
+                bbox=bbox,
+                progress_callback=self.update_progress
+            )
 
-                    def progress_wrapper(percent, message):
-                        adjusted_percent = base_progress + int((percent / 100) * (100 / len(variable_codes)))
-                        self.update_progress(adjusted_percent, f"[{idx+1}/{len(variable_codes)}] {message}")
-
-                    layer = load_census_layer(
-                        var_code,
-                        geo_level=geo_level,
-                        geo_filters=geo_filters,
-                        bbox=bbox,
-                        progress_callback=progress_wrapper
-                    )
-
-                    if layer.isValid():
-                        QgsProject.instance().addMapLayer(layer)
-                        loaded_count += 1
-                        QgsMessageLog.logMessage(
-                            f"Layer loaded: {layer.name()}",
-                            "Censo Argentino",
-                            Qgis.Info
-                        )
-                    else:
-                        error_count += 1
-                        QgsMessageLog.logMessage(
-                            f"Invalid layer created for {var_code}",
-                            "Censo Argentino",
-                            Qgis.Critical
-                        )
-
-                except Exception as e:
-                    error_count += 1
-                    QgsMessageLog.logMessage(
-                        f"Error loading {var_code}: {str(e)}",
-                        "Censo Argentino",
-                        Qgis.Critical
-                    )
-
-            # Summary message
-            if error_count == 0:
-                self.lblDescription.setText(f"Successfully loaded {loaded_count} layer(s)!")
+            if layer.isValid():
+                QgsProject.instance().addMapLayer(layer)
+                if len(variable_codes) == 1:
+                    self.lblDescription.setText(f"Successfully loaded layer with 1 variable!")
+                else:
+                    self.lblDescription.setText(f"Successfully loaded layer with {len(variable_codes)} variables!")
+                QgsMessageLog.logMessage(
+                    f"Layer loaded: {layer.name()} with {len(variable_codes)} variables",
+                    "Censo Argentino",
+                    Qgis.Info
+                )
             else:
-                self.lblDescription.setText(f"Loaded {loaded_count} layer(s), {error_count} error(s)")
+                self.lblDescription.setText("Error: Invalid layer")
+                QgsMessageLog.logMessage(
+                    "Invalid layer created",
+                    "Censo Argentino",
+                    Qgis.Critical
+                )
 
         except Exception as e:
             self.lblDescription.setText(f"Error: {str(e)}")
             QgsMessageLog.logMessage(
-                f"Error in batch load: {str(e)}",
+                f"Error loading layer: {str(e)}",
                 "Censo Argentino",
                 Qgis.Critical
             )
