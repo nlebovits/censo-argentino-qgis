@@ -271,16 +271,18 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
 
         config = geo_config[geo_level]
 
-        # Build WHERE clause with geographic and variable filters
+        # Build WHERE clause for census data (variable filter only)
         variable_placeholders = ', '.join(['?' for _ in variable_codes])
-        where_clause = f"c.codigo_variable IN ({variable_placeholders})"
+        census_where_clause = f"c.codigo_variable IN ({variable_placeholders})"
         query_params = list(variable_codes)
 
+        # Build geographic filter for the geometry subquery
+        geo_filter = ""
         if geo_filters and len(geo_filters) > 0:
-            # Build filter based on geo_level
+            # Build filter based on geo_level - these go in the subquery
             if geo_level == "PROV":
                 placeholders = ', '.join(['?' for _ in geo_filters])
-                where_clause += f" AND g.PROV IN ({placeholders})"
+                geo_filter = f" AND PROV IN ({placeholders})"
                 query_params.extend(geo_filters)
             elif geo_level == "DEPTO":
                 # Parse "PROV-DEPTO" format
@@ -288,26 +290,26 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
                 for gf in geo_filters:
                     parts = gf.split('-')
                     if len(parts) == 2:
-                        filter_conditions.append("(g.PROV = ? AND g.DEPTO = ?)")
+                        filter_conditions.append("(PROV = ? AND DEPTO = ?)")
                         query_params.extend(parts)
                 if filter_conditions:
-                    where_clause += f" AND ({' OR '.join(filter_conditions)})"
+                    geo_filter = f" AND ({' OR '.join(filter_conditions)})"
             elif geo_level == "FRACC":
                 # Parse "PROV-DEPTO-FRACC" format
                 filter_conditions = []
                 for gf in geo_filters:
                     parts = gf.split('-')
                     if len(parts) == 3:
-                        filter_conditions.append("(g.PROV = ? AND g.DEPTO = ? AND g.FRACC = ?)")
+                        filter_conditions.append("(PROV = ? AND DEPTO = ? AND FRACC = ?)")
                         query_params.extend(parts)
                 if filter_conditions:
-                    where_clause += f" AND ({' OR '.join(filter_conditions)})"
+                    geo_filter = f" AND ({' OR '.join(filter_conditions)})"
             elif geo_level == "RADIO":
                 placeholders = ', '.join(['?' for _ in geo_filters])
-                where_clause += f" AND g.COD_2022 IN ({placeholders})"
+                geo_filter = f" AND COD_2022 IN ({placeholders})"
                 query_params.extend(geo_filters)
 
-        # Build spatial filter subquery if bbox provided
+        # Build spatial filter for the geometry subquery
         # Apply spatial filter to geometry table BEFORE joining with census data
         # This ensures we get geometries even if census data doesn't exist for those variables
         spatial_filter = ""
@@ -315,7 +317,7 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
             xmin, ymin, xmax, ymax = bbox
             # Create a polygon from the bbox coordinates in WKT format
             bbox_wkt = f"POLYGON(({xmin} {ymin}, {xmax} {ymin}, {xmax} {ymax}, {xmin} {ymax}, {xmin} {ymin}))"
-            spatial_filter = f" AND ST_Intersects(g.geometry, ST_GeomFromText('{bbox_wkt}'))"
+            spatial_filter = f" AND ST_Intersects(geometry, ST_GeomFromText('{bbox_wkt}'))"
 
         # Build pivot aggregation for each variable
         pivot_columns = []
@@ -337,11 +339,11 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
                     {pivot_sql}
                 FROM (
                     SELECT * FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet'
-                    WHERE 1=1 {spatial_filter}
+                    WHERE 1=1 {geo_filter} {spatial_filter}
                 ) g
                 JOIN 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
                     ON g.COD_2022 = c.id_geo
-                WHERE {where_clause}
+                WHERE {census_where_clause}
                 GROUP BY {config['group_cols']}
             """
         else:
@@ -353,11 +355,11 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
                     {pivot_sql}
                 FROM (
                     SELECT * FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet'
-                    WHERE 1=1 {spatial_filter}
+                    WHERE 1=1 {geo_filter} {spatial_filter}
                 ) g
                 JOIN 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
                     ON g.COD_2022 = c.id_geo
-                WHERE {where_clause}
+                WHERE {census_where_clause}
                 GROUP BY {config['id_field']}, g.geometry
             """
 
