@@ -419,9 +419,17 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
             Qgis.Info
         )
 
-        # Pass query to callback for Query Log tab
+        # Pass query to callback for Query Log tab (substitute parameters for readability)
         if progress_callback:
-            progress_callback(25, f"QUERY_TEXT:{query}")
+            # Replace ? placeholders with actual values for logging
+            logged_query = query
+            for param in query_params:
+                # Quote strings, leave numbers as-is
+                if isinstance(param, str):
+                    logged_query = logged_query.replace('?', f"'{param}'", 1)
+                else:
+                    logged_query = logged_query.replace('?', str(param), 1)
+            progress_callback(25, f"QUERY_TEXT:{logged_query}")
 
         if progress_callback:
             progress_callback(30, "Executing query...")
