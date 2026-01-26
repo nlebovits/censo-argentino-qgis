@@ -137,13 +137,14 @@ def get_variables(entity_type=None, progress_callback=None):
         raise Exception(f"Error loading variables: {str(e)}")
 
 
-def load_census_layer(variable_code, geo_level="RADIO", geo_filters=None, progress_callback=None):
+def load_census_layer(variable_code, geo_level="RADIO", geo_filters=None, bbox=None, progress_callback=None):
     """Run DuckDB join and return QgsVectorLayer with census data
 
     Args:
         variable_code: Census variable code
         geo_level: Geographic level - "RADIO", "FRACC", "DEPTO", or "PROV"
         geo_filters: Optional list of geographic codes to filter by
+        bbox: Optional bounding box (xmin, ymin, xmax, ymax) in EPSG:4326
         progress_callback: Optional callback for progress updates
     """
     try:
@@ -220,6 +221,12 @@ def load_census_layer(variable_code, geo_level="RADIO", geo_filters=None, progre
                 placeholders = ', '.join(['?' for _ in geo_filters])
                 where_clause += f" AND g.COD_2022 IN ({placeholders})"
                 query_params.extend(geo_filters)
+
+        # Add bounding box filter if provided
+        if bbox:
+            xmin, ymin, xmax, ymax = bbox
+            where_clause += " AND ST_Intersects(g.geometry, ST_MakeEnvelope(?, ?, ?, ?, 4326))"
+            query_params.extend([xmin, ymin, xmax, ymax])
 
         if config["dissolve"]:
             # Aggregate geometries and sum data

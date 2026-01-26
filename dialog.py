@@ -2,6 +2,7 @@ import os
 from qgis.PyQt import uic, QtWidgets
 from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.core import QgsProject, QgsMessageLog, Qgis
+from qgis.utils import iface
 from .query import get_entity_types, get_variables, get_geographic_codes, load_census_layer
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -195,6 +196,31 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
 
         geo_filters = checked_geo_filters if checked_geo_filters else None
 
+        # Get current map extent if checkbox is checked
+        bbox = None
+        if self.chkFilterViewbox.isChecked():
+            try:
+                canvas = iface.mapCanvas()
+                extent = canvas.extent()
+                # Convert to WGS84 (EPSG:4326) if needed
+                crs = canvas.mapSettings().destinationCrs()
+                if crs.authid() != 'EPSG:4326':
+                    from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
+                    transform = QgsCoordinateTransform(
+                        crs,
+                        QgsCoordinateReferenceSystem('EPSG:4326'),
+                        QgsProject.instance()
+                    )
+                    extent = transform.transformBoundingBox(extent)
+
+                bbox = (extent.xMinimum(), extent.yMinimum(), extent.xMaximum(), extent.yMaximum())
+            except Exception as e:
+                QgsMessageLog.logMessage(
+                    f"Error getting map extent: {str(e)}",
+                    "Censo Argentino",
+                    Qgis.Warning
+                )
+
         self.lblDescription.setText("")
         self.progressBar.show()
         self.lblStatus.show()
@@ -218,6 +244,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                         var_code,
                         geo_level=geo_level,
                         geo_filters=geo_filters,
+                        bbox=bbox,
                         progress_callback=progress_wrapper
                     )
 

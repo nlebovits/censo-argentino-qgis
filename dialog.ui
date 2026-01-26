@@ -144,9 +144,29 @@
     </spacer>
    </item>
    <item>
+    <widget class="QCheckBox" name="chkFilterViewbox">
+     <property name="text">
+      <string>Filter by current map extent</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QPushButton" name="btnLoad">
      <property name="text">
       <string>Load Layers</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="lblSaveNotice">
+     <property name="text">
+      <string>&lt;i&gt;Note: Layers are temporary. To save, right-click the layer in QGIS and select "Make Permanent".&lt;/i&gt;</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+     <property name="textFormat">
+      <enum>Qt::RichText</enum>
      </property>
     </widget>
    </item>
