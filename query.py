@@ -71,8 +71,14 @@ def get_variables(entity_type=None, progress_callback=None):
         raise Exception(f"Error loading variables: {str(e)}")
 
 
-def load_census_layer(variable_code, progress_callback=None):
-    """Run DuckDB join and return QgsVectorLayer with census data"""
+def load_census_layer(variable_code, geo_level="RADIO", progress_callback=None):
+    """Run DuckDB join and return QgsVectorLayer with census data
+
+    Args:
+        variable_code: Census variable code
+        geo_level: Geographic level - "RADIO", "FRACC", "DEPTO", or "PROV"
+        progress_callback: Optional callback for progress updates
+    """
     try:
         if progress_callback:
             progress_callback(5, "Connecting to data source...")
@@ -81,15 +87,63 @@ def load_census_layer(variable_code, progress_callback=None):
         con.execute("INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;")
 
         if progress_callback:
-            progress_callback(15, "Querying census data...")
+            progress_callback(15, f"Querying census data at {geo_level} level...")
 
-        query = """
-            SELECT g.COD_2022, ST_AsText(g.geometry) as wkt, c.conteo
-            FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet' g
-            JOIN 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
-                ON g.COD_2022 = c.id_geo
-            WHERE c.codigo_variable = ?
-        """
+        # Define grouping columns and ID fields based on geographic level
+        geo_config = {
+            "RADIO": {
+                "group_cols": "g.PROV, g.DEPTO, g.FRACC, g.RADIO",
+                "id_field": "g.COD_2022",
+                "id_alias": "geo_id",
+                "dissolve": False
+            },
+            "FRACC": {
+                "group_cols": "g.PROV, g.DEPTO, g.FRACC",
+                "id_field": "g.PROV || '-' || g.DEPTO || '-' || g.FRACC",
+                "id_alias": "geo_id",
+                "dissolve": True
+            },
+            "DEPTO": {
+                "group_cols": "g.PROV, g.DEPTO",
+                "id_field": "g.PROV || '-' || g.DEPTO",
+                "id_alias": "geo_id",
+                "dissolve": True
+            },
+            "PROV": {
+                "group_cols": "g.PROV",
+                "id_field": "g.PROV",
+                "id_alias": "geo_id",
+                "dissolve": True
+            }
+        }
+
+        config = geo_config[geo_level]
+
+        if config["dissolve"]:
+            # Aggregate geometries and sum data
+            query = f"""
+                SELECT
+                    {config['id_field']} as {config['id_alias']},
+                    ST_AsText(ST_Union_Agg(g.geometry)) as wkt,
+                    SUM(c.conteo) as conteo
+                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet' g
+                JOIN 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
+                    ON g.COD_2022 = c.id_geo
+                WHERE c.codigo_variable = ?
+                GROUP BY {config['group_cols']}
+            """
+        else:
+            # No aggregation needed for RADIO level
+            query = f"""
+                SELECT
+                    {config['id_field']} as {config['id_alias']},
+                    ST_AsText(g.geometry) as wkt,
+                    c.conteo
+                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet' g
+                JOIN 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
+                    ON g.COD_2022 = c.id_geo
+                WHERE c.codigo_variable = ?
+            """
 
         if progress_callback:
             progress_callback(30, "Streaming query results...")
@@ -104,12 +158,12 @@ def load_census_layer(variable_code, progress_callback=None):
             progress_callback(50, "Creating layer...")
 
         # Create memory layer
-        layer = QgsVectorLayer("Polygon?crs=EPSG:4326", f"Censo - {variable_code}", "memory")
+        layer = QgsVectorLayer("Polygon?crs=EPSG:4326", f"Censo - {variable_code} ({geo_level})", "memory")
         provider = layer.dataProvider()
 
         # Add fields
         provider.addAttributes([
-            QgsField("COD_2022", QVariant.String),
+            QgsField("geo_id", QVariant.String),
             QgsField("conteo", QVariant.Double)
         ])
         layer.updateFields()
@@ -127,10 +181,10 @@ def load_census_layer(variable_code, progress_callback=None):
             geom = QgsGeometry.fromWkt(row['wkt'])
 
             if geom.isNull():
-                raise Exception(f"Invalid geometry for feature {row['COD_2022']}")
+                raise Exception(f"Invalid geometry for feature {row['geo_id']}")
 
             feature.setGeometry(geom)
-            feature.setAttributes([row['COD_2022'], float(row['conteo'])])
+            feature.setAttributes([row['geo_id'], float(row['conteo'])])
             features.append(feature)
 
             # Update progress every 100 features
