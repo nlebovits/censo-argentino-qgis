@@ -232,7 +232,7 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
         # Add bounding box filter if provided
         if bbox:
             xmin, ymin, xmax, ymax = bbox
-            where_clause += " AND ST_Intersects(g.geometry, ST_MakeEnvelope(?, ?, ?, ?, 4326))"
+            where_clause += " AND ST_Intersects(g.geometry, ST_MakeEnvelope(?, ?, ?, ?))"
             query_params.extend([xmin, ymin, xmax, ymax])
 
         # Build pivot aggregation for each variable
