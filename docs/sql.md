@@ -2,6 +2,8 @@
 
 Acceso directo a los datos mediante consultas DuckDB.
 
+![Interfaz del modo SQL](imgs/sql.png)
+
 ## Tablas disponibles
 
 | Tabla | Descripción |
@@ -96,3 +98,5 @@ ORDER BY entidad, codigo_variable
 ## Registro de consultas
 
 La pestaña **Registro de Consultas** muestra todas las consultas ejecutadas, incluyendo las generadas automáticamente desde la pestaña Explorar. Puede copiar cualquier consulta al portapapeles.
+
+![Panel de registro de consultas](imgs/registro-sql.png)

@@ -9,8 +9,29 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "Apache-2.0"}
 
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "duckdb>=0.9.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--cov=.",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+
 # This is a QGIS plugin, not a Python package
 # Documentation is built with MkDocs as a uv tool:
 #   uv tool install mkdocs --with mkdocs-material --with pymdown-extensions
 #   uv tool run mkdocs serve  # Dev server at http://127.0.0.1:8000
 #   uv tool run mkdocs build  # Build to site/ directory
+# Tests:
+#   uv pip install -e ".[test]"
+#   uv run pytest

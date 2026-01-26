@@ -11,3 +11,6 @@ build/
 site/
 .venv/
 venv/
+.coverage
+htmlcov/
+.pytest_cache/

@@ -4,6 +4,8 @@
 
 Interfaz visual para seleccionar y cargar datos del censo.
 
+![Interfaz de la pestaña Explorar](imgs/interfaz.png)
+
 ### Opciones
 
 | Opción | Descripción |
@@ -41,6 +43,8 @@ El plugin genera una capa de polígonos con:
 
 - Columna `geo_id` con el código del censo
 - Una columna por cada variable seleccionada con el conteo
+
+![Ejemplo de visualización en QGIS](imgs/ejemplo.png)
 
 ## Caché
 
