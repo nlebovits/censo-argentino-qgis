@@ -55,17 +55,32 @@ python -m pip install duckdb
 
 1. Click the **Censo Argentino** toolbar icon or go to **Plugins > Censo Argentino**
 2. Select year (currently only 2022 available)
-3. Select a census variable from the dropdown
-4. Click **Load Layer**
+3. Select geographic level (Census Tract, Fraction, Department, or Province)
+4. (Optional) Filter by specific geographic areas by checking them in the list
+5. Select entity type (Household, Person, or Dwelling)
+6. Search and check one or more census variables
+7. (Optional) Check "Filter by current map extent" to load only visible data
+8. Click **Load Layer**
 
-The census data will be loaded as a polygon layer with the selected variable joined to census tracts (radios).
+The census data will be loaded as a single polygon layer with all selected variables as attribute columns.
+
+### Caching
+
+Metadata (variables and geographic codes) is automatically cached in `~/.cache/qgis-censo-argentino/` after the first load. This makes subsequent dialog opens nearly instant. The cache is safe to delete - it will be rebuilt on next use.
 
 ## Features
 
-- Direct access to Source.Coop hosted census data
-- No local data download required
-- Automatic geometry and attribute joining
-- Simple variable selection interface
+- **Direct access** to Source.Coop hosted census data
+- **No local data download** required for actual census data
+- **Automatic caching** of metadata (variables and geographic codes) for faster subsequent loads
+- **Multi-variable support** - load multiple variables in a single layer
+- **Geographic level selection** - Census Tract, Fraction, Department, or Province
+- **Entity type filtering** - Filter by Household, Person, or Dwelling variables
+- **Geographic filtering** - Optionally filter by specific provinces/departments
+- **Viewport filtering** - Load only data visible in current map extent
+- **Variable search** - Quick search through hundreds of census variables
+- **Async loading** - Background data loading keeps UI responsive
+- **Automatic geometry aggregation** for higher geographic levels
 
 ## Requirements
 

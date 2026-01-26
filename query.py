@@ -1,10 +1,53 @@
 import duckdb
+import json
+import os
+from pathlib import Path
 from qgis.core import QgsVectorLayer, QgsFeature, QgsGeometry, QgsField, QgsFields
 from qgis.PyQt.QtCore import QVariant
 
 
+def get_cache_dir():
+    """Get or create cache directory for census data"""
+    cache_dir = Path.home() / '.cache' / 'qgis-censo-argentino'
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir
+
+
+def get_cached_data(cache_key):
+    """Retrieve cached data if it exists"""
+    cache_file = get_cache_dir() / f"{cache_key}.json"
+    if cache_file.exists():
+        try:
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            # If cache is corrupted, ignore and re-fetch
+            return None
+    return None
+
+
+def save_cached_data(cache_key, data):
+    """Save data to cache"""
+    cache_file = get_cache_dir() / f"{cache_key}.json"
+    try:
+        with open(cache_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception:
+        # If we can't write cache, that's okay - just continue without caching
+        pass
+
+
 def get_entity_types(progress_callback=None):
-    """Query metadata.parquet and return list of available entity types"""
+    """Query metadata.parquet and return list of available entity types (with caching)"""
+    cache_key = "entity_types"
+
+    # Check cache first
+    cached = get_cached_data(cache_key)
+    if cached is not None:
+        if progress_callback:
+            progress_callback(100, "Entity types loaded from cache")
+        return cached
+
     try:
         if progress_callback:
             progress_callback(10, "Connecting to data source...")
@@ -25,16 +68,21 @@ def get_entity_types(progress_callback=None):
         result = con.execute(query).fetchall()
         con.close()
 
+        entity_types = [row[0] for row in result]
+
+        # Save to cache
+        save_cached_data(cache_key, entity_types)
+
         if progress_callback:
             progress_callback(100, "Entity types loaded")
 
-        return [row[0] for row in result]
+        return entity_types
     except Exception as e:
         raise Exception(f"Error loading entity types: {str(e)}")
 
 
 def get_geographic_codes(geo_level="PROV", progress_callback=None):
-    """Query radios.parquet and return list of available geographic codes for the level
+    """Query radios.parquet and return list of available geographic codes for the level (with caching)
 
     Args:
         geo_level: Geographic level - "RADIO", "FRACC", "DEPTO", or "PROV"
@@ -43,6 +91,16 @@ def get_geographic_codes(geo_level="PROV", progress_callback=None):
     Returns:
         List of tuples: (code, label) for each geographic unit
     """
+    cache_key = f"geo_codes_{geo_level}"
+
+    # Check cache first
+    cached = get_cached_data(cache_key)
+    if cached is not None:
+        if progress_callback:
+            progress_callback(100, f"{geo_level} codes loaded from cache")
+        # Convert back to tuples
+        return [(item[0], item[1]) for item in cached]
+
     try:
         if progress_callback:
             progress_callback(10, "Connecting to data source...")
@@ -91,16 +149,31 @@ def get_geographic_codes(geo_level="PROV", progress_callback=None):
         result = con.execute(query).fetchall()
         con.close()
 
+        geo_codes = [(row[0], row[1]) for row in result]
+
+        # Save to cache
+        save_cached_data(cache_key, geo_codes)
+
         if progress_callback:
             progress_callback(100, "Geographic codes loaded")
 
-        return [(row[0], row[1]) for row in result]
+        return geo_codes
     except Exception as e:
         raise Exception(f"Error loading geographic codes: {str(e)}")
 
 
 def get_variables(entity_type=None, progress_callback=None):
-    """Query metadata.parquet and return list of (codigo_variable, etiqueta_variable) for entity type"""
+    """Query metadata.parquet and return list of (codigo_variable, etiqueta_variable) for entity type (with caching)"""
+    cache_key = f"variables_{entity_type if entity_type else 'all'}"
+
+    # Check cache first
+    cached = get_cached_data(cache_key)
+    if cached is not None:
+        if progress_callback:
+            progress_callback(100, "Variables loaded from cache")
+        # Convert back to tuples
+        return [(item[0], item[1]) for item in cached]
+
     try:
         if progress_callback:
             progress_callback(10, "Connecting to data source...")
@@ -129,10 +202,15 @@ def get_variables(entity_type=None, progress_callback=None):
 
         con.close()
 
+        variables = [(row[0], row[1]) for row in result]
+
+        # Save to cache
+        save_cached_data(cache_key, variables)
+
         if progress_callback:
             progress_callback(100, "Variables loaded")
 
-        return [(row[0], row[1]) for row in result]
+        return variables
     except Exception as e:
         raise Exception(f"Error loading variables: {str(e)}")
 
