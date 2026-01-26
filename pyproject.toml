@@ -15,6 +15,10 @@ test = [
     "pytest-cov>=4.0",
     "duckdb>=0.9.0",
 ]
+dev = [
+    "ruff>=0.9.0",
+    "pre-commit>=3.0.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -27,6 +31,39 @@ addopts = [
     "--cov-report=html",
 ]
 
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+exclude = [
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".pytest_cache",
+    "htmlcov",
+    "site",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+    "B904",  # raise from within except (not critical for QGIS plugin)
+    "B905",  # zip without explicit strict parameter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+"tests/*.py" = ["B011"]   # Allow assert False in tests
+
 # This is a QGIS plugin, not a Python package
 # Documentation is built with MkDocs as a uv tool:
 #   uv tool install mkdocs --with mkdocs-material --with pymdown-extensions
@@ -35,3 +72,8 @@ addopts = [
 # Tests:
 #   uv pip install -e ".[test]"
 #   uv run pytest
+# Development:
+#   uv pip install -e ".[dev]"
+#   pre-commit install
+#   ruff format .
+#   ruff check --fix .

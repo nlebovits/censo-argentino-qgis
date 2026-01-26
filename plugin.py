@@ -1,6 +1,8 @@
 import os
+
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
+
 from .dialog import CensoArgentinoDialog
 
 
@@ -12,12 +14,8 @@ class CensoArgentinoPlugin:
 
     def initGui(self):
         """Initialize the plugin GUI"""
-        icon_path = os.path.join(os.path.dirname(__file__), 'icon.png')
-        self.action = QAction(
-            QIcon(icon_path),
-            "Censo Argentino",
-            self.iface.mainWindow()
-        )
+        icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+        self.action = QAction(QIcon(icon_path), "Censo Argentino", self.iface.mainWindow())
         self.action.triggered.connect(self.run)
         self.action.setStatusTip("Load Argentina census data from Source.Coop")
 

@@ -1,11 +1,12 @@
 """Tests for cache functions in query.py."""
+
 import json
-from pathlib import Path
-from unittest.mock import patch
-import pytest
 
 # Import functions to test
 import sys
+from pathlib import Path
+from unittest.mock import patch
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from query import get_cache_dir, get_cached_data, save_cached_data
 
@@ -20,16 +21,16 @@ class TestGetCacheDir:
 
     def test_creates_directory_if_missing(self, temp_cache_dir):
         """get_cache_dir should create directory if it doesn't exist."""
-        with patch('query.Path.home', return_value=temp_cache_dir):
+        with patch("query.Path.home", return_value=temp_cache_dir):
             cache_dir = get_cache_dir()
             assert cache_dir.exists()
             assert cache_dir.is_dir()
 
     def test_directory_name_is_correct(self, temp_cache_dir):
         """Cache directory should be named 'qgis-censo-argentino'."""
-        with patch('query.Path.home', return_value=temp_cache_dir):
+        with patch("query.Path.home", return_value=temp_cache_dir):
             cache_dir = get_cache_dir()
-            assert cache_dir.name == 'qgis-censo-argentino'
+            assert cache_dir.name == "qgis-censo-argentino"
 
 
 class TestGetCachedData:
@@ -37,8 +38,8 @@ class TestGetCachedData:
 
     def test_returns_none_when_cache_missing(self, temp_cache_dir):
         """Should return None when cache file doesn't exist."""
-        with patch('query.get_cache_dir', return_value=temp_cache_dir):
-            result = get_cached_data('nonexistent')
+        with patch("query.get_cache_dir", return_value=temp_cache_dir):
+            result = get_cached_data("nonexistent")
             assert result is None
 
     def test_returns_data_when_cache_exists(self, temp_cache_dir):
@@ -46,35 +47,35 @@ class TestGetCachedData:
         # Setup: Create a cache file
         cache_file = temp_cache_dir / "test_key.json"
         test_data = {"key": "value", "number": 42}
-        with open(cache_file, 'w', encoding='utf-8') as f:
+        with open(cache_file, "w", encoding="utf-8") as f:
             json.dump(test_data, f)
 
         # Test
-        with patch('query.get_cache_dir', return_value=temp_cache_dir):
-            result = get_cached_data('test_key')
+        with patch("query.get_cache_dir", return_value=temp_cache_dir):
+            result = get_cached_data("test_key")
             assert result == test_data
 
     def test_returns_none_when_cache_corrupted(self, temp_cache_dir):
         """Should return None when cache file is corrupted JSON."""
         # Setup: Create corrupted cache file
         cache_file = temp_cache_dir / "corrupted.json"
-        with open(cache_file, 'w') as f:
+        with open(cache_file, "w") as f:
             f.write("{ this is not valid json }")
 
         # Test
-        with patch('query.get_cache_dir', return_value=temp_cache_dir):
-            result = get_cached_data('corrupted')
+        with patch("query.get_cache_dir", return_value=temp_cache_dir):
+            result = get_cached_data("corrupted")
             assert result is None
 
     def test_handles_unicode_correctly(self, temp_cache_dir):
         """Should handle Spanish characters correctly."""
         cache_file = temp_cache_dir / "unicode.json"
         test_data = {"provincia": "Córdoba", "descripción": "Población total"}
-        with open(cache_file, 'w', encoding='utf-8') as f:
+        with open(cache_file, "w", encoding="utf-8") as f:
             json.dump(test_data, f, ensure_ascii=False)
 
-        with patch('query.get_cache_dir', return_value=temp_cache_dir):
-            result = get_cached_data('unicode')
+        with patch("query.get_cache_dir", return_value=temp_cache_dir):
+            result = get_cached_data("unicode")
             assert result == test_data
 
 
@@ -85,13 +86,13 @@ class TestSaveCachedData:
         """Should create cache file with correct data."""
         test_data = {"key": "value"}
 
-        with patch('query.get_cache_dir', return_value=temp_cache_dir):
-            save_cached_data('test_key', test_data)
+        with patch("query.get_cache_dir", return_value=temp_cache_dir):
+            save_cached_data("test_key", test_data)
 
         cache_file = temp_cache_dir / "test_key.json"
         assert cache_file.exists()
 
-        with open(cache_file, 'r', encoding='utf-8') as f:
+        with open(cache_file, encoding="utf-8") as f:
             saved_data = json.load(f)
         assert saved_data == test_data
 
@@ -99,14 +100,14 @@ class TestSaveCachedData:
         """Should overwrite existing cache file."""
         cache_file = temp_cache_dir / "overwrite.json"
         old_data = {"old": "data"}
-        with open(cache_file, 'w', encoding='utf-8') as f:
+        with open(cache_file, "w", encoding="utf-8") as f:
             json.dump(old_data, f)
 
         new_data = {"new": "data"}
-        with patch('query.get_cache_dir', return_value=temp_cache_dir):
-            save_cached_data('overwrite', new_data)
+        with patch("query.get_cache_dir", return_value=temp_cache_dir):
+            save_cached_data("overwrite", new_data)
 
-        with open(cache_file, 'r', encoding='utf-8') as f:
+        with open(cache_file, encoding="utf-8") as f:
             saved_data = json.load(f)
         assert saved_data == new_data
 
@@ -114,11 +115,11 @@ class TestSaveCachedData:
         """Should save Spanish characters correctly."""
         test_data = {"provincia": "Córdoba", "año": 2022}
 
-        with patch('query.get_cache_dir', return_value=temp_cache_dir):
-            save_cached_data('unicode', test_data)
+        with patch("query.get_cache_dir", return_value=temp_cache_dir):
+            save_cached_data("unicode", test_data)
 
         cache_file = temp_cache_dir / "unicode.json"
-        with open(cache_file, 'r', encoding='utf-8') as f:
+        with open(cache_file, encoding="utf-8") as f:
             content = f.read()
             assert "Córdoba" in content  # Should not be escaped
 
@@ -128,8 +129,8 @@ class TestSaveCachedData:
         temp_cache_dir.chmod(0o444)
 
         try:
-            with patch('query.get_cache_dir', return_value=temp_cache_dir):
+            with patch("query.get_cache_dir", return_value=temp_cache_dir):
                 # Should not raise an exception
-                save_cached_data('readonly', {"data": "test"})
+                save_cached_data("readonly", {"data": "test"})
         finally:
             temp_cache_dir.chmod(0o755)  # Restore permissions

@@ -203,8 +203,6 @@ El workflow de GitHub Actions (`.github/workflows/release.yml`) automáticamente
 3. Crea ZIP del plugin
 4. Publica GitHub Release con el artefacto
 
-Ver [RELEASING.md](../RELEASING.md) para más detalles.
-
 ## Convenciones de Código
 
 ### Estilo Python

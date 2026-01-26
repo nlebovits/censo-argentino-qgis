@@ -1,20 +1,21 @@
-import duckdb
 import json
-import os
 from pathlib import Path
-from qgis.core import QgsVectorLayer, QgsFeature, QgsGeometry, QgsField, QgsFields
+
+import duckdb
+from qgis.core import QgsFeature, QgsField, QgsGeometry, QgsVectorLayer
 from qgis.PyQt.QtCore import QVariant
 
 
 class DuckDBConnectionPool:
     """Singleton connection pool for DuckDB to avoid repeated connection/extension setup"""
+
     _instance = None
     _connection = None
     _extensions_loaded = False
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(DuckDBConnectionPool, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
     def get_connection(self, load_extensions=True):
@@ -43,7 +44,7 @@ _connection_pool = DuckDBConnectionPool()
 
 def get_cache_dir():
     """Get or create cache directory for census data"""
-    cache_dir = Path.home() / '.cache' / 'qgis-censo-argentino'
+    cache_dir = Path.home() / ".cache" / "qgis-censo-argentino"
     cache_dir.mkdir(parents=True, exist_ok=True)
     return cache_dir
 
@@ -53,7 +54,7 @@ def get_cached_data(cache_key):
     cache_file = get_cache_dir() / f"{cache_key}.json"
     if cache_file.exists():
         try:
-            with open(cache_file, 'r', encoding='utf-8') as f:
+            with open(cache_file, encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
             # If cache is corrupted, ignore and re-fetch
@@ -65,7 +66,7 @@ def save_cached_data(cache_key, data):
     """Save data to cache"""
     cache_file = get_cache_dir() / f"{cache_key}.json"
     try:
-        with open(cache_file, 'w', encoding='utf-8') as f:
+        with open(cache_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     except Exception:
         # If we can't write cache, that's okay - just continue without caching
@@ -173,7 +174,7 @@ def get_geographic_codes(geo_level="PROV", progress_callback=None):
                     c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Radio ' || c.valor_radio as label
                 FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
                 ORDER BY c.valor_provincia, c.valor_departamento, c.valor_fraccion, c.valor_radio
-            """
+            """,
         }
 
         query = geo_queries.get(geo_level, geo_queries["PROV"])
@@ -245,7 +246,9 @@ def get_variables(entity_type=None, progress_callback=None):
         raise Exception(f"Error cargando variables: {str(e)}")
 
 
-def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=None, progress_callback=None):
+def load_census_layer(
+    variable_codes, geo_level="RADIO", geo_filters=None, bbox=None, progress_callback=None
+):
     """Run DuckDB join and return QgsVectorLayer with census data for multiple variables
 
     Args:
@@ -276,32 +279,32 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
                 "group_cols": "g.PROV, g.DEPTO, g.FRACC, g.RADIO",
                 "id_field": "g.COD_2022",
                 "id_alias": "geo_id",
-                "dissolve": False
+                "dissolve": False,
             },
             "FRACC": {
                 "group_cols": "g.PROV, g.DEPTO, g.FRACC",
                 "id_field": "g.PROV || '-' || g.DEPTO || '-' || g.FRACC",
                 "id_alias": "geo_id",
-                "dissolve": True
+                "dissolve": True,
             },
             "DEPTO": {
                 "group_cols": "g.PROV, g.DEPTO",
                 "id_field": "g.PROV || '-' || g.DEPTO",
                 "id_alias": "geo_id",
-                "dissolve": True
+                "dissolve": True,
             },
             "PROV": {
                 "group_cols": "g.PROV",
                 "id_field": "g.PROV",
                 "id_alias": "geo_id",
-                "dissolve": True
-            }
+                "dissolve": True,
+            },
         }
 
         config = geo_config[geo_level]
 
         # Build WHERE clause for census data (variable filter only)
-        variable_placeholders = ', '.join(['?' for _ in variable_codes])
+        variable_placeholders = ", ".join(["?" for _ in variable_codes])
         census_where_clause = f"c.codigo_variable IN ({variable_placeholders})"
         query_params = list(variable_codes)
 
@@ -310,14 +313,14 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
         if geo_filters and len(geo_filters) > 0:
             # Build filter based on geo_level - these go in the subquery
             if geo_level == "PROV":
-                placeholders = ', '.join(['?' for _ in geo_filters])
+                placeholders = ", ".join(["?" for _ in geo_filters])
                 geo_filter = f" AND PROV IN ({placeholders})"
                 query_params.extend(geo_filters)
             elif geo_level == "DEPTO":
                 # Parse "PROV-DEPTO" format
                 filter_conditions = []
                 for gf in geo_filters:
-                    parts = gf.split('-')
+                    parts = gf.split("-")
                     if len(parts) == 2:
                         filter_conditions.append("(PROV = ? AND DEPTO = ?)")
                         query_params.extend(parts)
@@ -327,14 +330,14 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
                 # Parse "PROV-DEPTO-FRACC" format
                 filter_conditions = []
                 for gf in geo_filters:
-                    parts = gf.split('-')
+                    parts = gf.split("-")
                     if len(parts) == 3:
                         filter_conditions.append("(PROV = ? AND DEPTO = ? AND FRACC = ?)")
                         query_params.extend(parts)
                 if filter_conditions:
                     geo_filter = f" AND ({' OR '.join(filter_conditions)})"
             elif geo_level == "RADIO":
-                placeholders = ', '.join(['?' for _ in geo_filters])
+                placeholders = ", ".join(["?" for _ in geo_filters])
                 geo_filter = f" AND COD_2022 IN ({placeholders})"
                 query_params.extend(geo_filters)
 
@@ -352,18 +355,22 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
         pivot_columns = []
         for var_code in variable_codes:
             if config["dissolve"]:
-                pivot_columns.append(f"SUM(CASE WHEN c.codigo_variable = '{var_code}' THEN c.conteo ELSE 0 END) as \"{var_code}\"")
+                pivot_columns.append(
+                    f"SUM(CASE WHEN c.codigo_variable = '{var_code}' THEN c.conteo ELSE 0 END) as \"{var_code}\""
+                )
             else:
-                pivot_columns.append(f"MAX(CASE WHEN c.codigo_variable = '{var_code}' THEN c.conteo ELSE NULL END) as \"{var_code}\"")
+                pivot_columns.append(
+                    f"MAX(CASE WHEN c.codigo_variable = '{var_code}' THEN c.conteo ELSE NULL END) as \"{var_code}\""
+                )
 
-        pivot_sql = ',\n                    '.join(pivot_columns)
+        pivot_sql = ",\n                    ".join(pivot_columns)
 
         if config["dissolve"]:
             # Aggregate geometries and sum data for each variable
             # Use subquery to filter geometries first, then join with census data
             query = f"""
                 SELECT
-                    {config['id_field']} as geo_id,
+                    {config["id_field"]} as geo_id,
                     ST_AsText(ST_Union_Agg(g.geometry)) as wkt,
                     {pivot_sql}
                 FROM (
@@ -373,13 +380,13 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
                 JOIN 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
                     ON g.COD_2022 = c.id_geo
                 WHERE {census_where_clause}
-                GROUP BY {config['group_cols']}
+                GROUP BY {config["group_cols"]}
             """
         else:
             # No aggregation needed for RADIO level
             query = f"""
                 SELECT
-                    {config['id_field']} as geo_id,
+                    {config["id_field"]} as geo_id,
                     ST_AsText(g.geometry) as wkt,
                     {pivot_sql}
                 FROM (
@@ -389,60 +396,41 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
                 JOIN 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
                     ON g.COD_2022 = c.id_geo
                 WHERE {census_where_clause}
-                GROUP BY {config['id_field']}, g.geometry
+                GROUP BY {config["id_field"]}, g.geometry
             """
 
         if progress_callback:
             progress_callback(20, "Construyendo consulta...")
 
         # Log the query for debugging
-        from qgis.core import QgsMessageLog, Qgis
+        from qgis.core import Qgis, QgsMessageLog
+
+        QgsMessageLog.logMessage("=== DEBUG DE CONSULTA CENSO ===", "Censo Argentino", Qgis.Info)
+        QgsMessageLog.logMessage(f"Nivel Geográfico: {geo_level}", "Censo Argentino", Qgis.Info)
         QgsMessageLog.logMessage(
-            "=== DEBUG DE CONSULTA CENSO ===",
-            "Censo Argentino",
-            Qgis.Info
-        )
-        QgsMessageLog.logMessage(
-            f"Nivel Geográfico: {geo_level}",
-            "Censo Argentino",
-            Qgis.Info
-        )
-        QgsMessageLog.logMessage(
-            f"Códigos de variables: {variable_codes}",
-            "Censo Argentino",
-            Qgis.Info
+            f"Códigos de variables: {variable_codes}", "Censo Argentino", Qgis.Info
         )
         QgsMessageLog.logMessage(
             f"Filtros geográficos: {geo_filters if geo_filters else 'Ninguno'}",
             "Censo Argentino",
-            Qgis.Info
+            Qgis.Info,
         )
         if bbox:
-            QgsMessageLog.logMessage(
-                f"Filtro bbox: {bbox}",
-                "Censo Argentino",
-                Qgis.Info
-            )
+            QgsMessageLog.logMessage(f"Filtro bbox: {bbox}", "Censo Argentino", Qgis.Info)
         QgsMessageLog.logMessage(
-            f"Parámetros de consulta: {query_params}",
-            "Censo Argentino",
-            Qgis.Info
+            f"Parámetros de consulta: {query_params}", "Censo Argentino", Qgis.Info
         )
         QgsMessageLog.logMessage(
             f"Filtro geográfico SQL: {geo_filter if geo_filter else 'Ninguno'}",
             "Censo Argentino",
-            Qgis.Info
+            Qgis.Info,
         )
         QgsMessageLog.logMessage(
             f"Filtro espacial SQL: {spatial_filter if spatial_filter else 'Ninguno'}",
             "Censo Argentino",
-            Qgis.Info
+            Qgis.Info,
         )
-        QgsMessageLog.logMessage(
-            f"Consulta completa:\n{query}",
-            "Censo Argentino",
-            Qgis.Info
-        )
+        QgsMessageLog.logMessage(f"Consulta completa:\n{query}", "Censo Argentino", Qgis.Info)
 
         # Pass query to callback for Query Log tab (substitute parameters for readability)
         if progress_callback:
@@ -451,9 +439,9 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
             for param in query_params:
                 # Quote strings, leave numbers as-is
                 if isinstance(param, str):
-                    logged_query = logged_query.replace('?', f"'{param}'", 1)
+                    logged_query = logged_query.replace("?", f"'{param}'", 1)
                 else:
-                    logged_query = logged_query.replace('?', str(param), 1)
+                    logged_query = logged_query.replace("?", str(param), 1)
             progress_callback(25, f"QUERY_TEXT:{logged_query}")
 
         if progress_callback:
@@ -472,11 +460,7 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
                 error_msg += f" Intente alejar el zoom o deshabilite el filtro de ventana. Bbox usado: {bbox}"
             if geo_filters:
                 error_msg += f" Filtros geográficos: {geo_filters}"
-            QgsMessageLog.logMessage(
-                f"ERROR: {error_msg}",
-                "Censo Argentino",
-                Qgis.Warning
-            )
+            QgsMessageLog.logMessage(f"ERROR: {error_msg}", "Censo Argentino", Qgis.Warning)
             # Create a dummy layer just to store the query for logging
             error_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "Error - Sin Datos", "memory")
             error_layer.setCustomProperty("censo_query", query)
@@ -513,7 +497,7 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
             feature = QgsFeature()
 
             # Parse geometry from WKT (converted by ST_AsText)
-            geom = QgsGeometry.fromWkt(row['wkt'])
+            geom = QgsGeometry.fromWkt(row["wkt"])
 
             if geom.isNull():
                 raise Exception(f"Geometría inválida para entidad {row['geo_id']}")
@@ -521,11 +505,11 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
             feature.setGeometry(geom)
 
             # Set attributes: geo_id + all variable values
-            attributes = [row['geo_id']]
+            attributes = [row["geo_id"]]
             for var_code in variable_codes:
                 val = row[var_code]
                 # Handle NaN/NULL values
-                attributes.append(float(val) if val is not None and str(val) != 'nan' else None)
+                attributes.append(float(val) if val is not None and str(val) != "nan" else None)
 
             feature.setAttributes(attributes)
             features.append(feature)
@@ -551,7 +535,7 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
         QgsMessageLog.logMessage(
             f"Se cargaron exitosamente {len(features)} entidades con {len(variable_codes)} variables",
             "Censo Argentino",
-            Qgis.Info
+            Qgis.Info,
         )
 
         # Store query as custom property for Query Log tab
@@ -602,7 +586,7 @@ def run_custom_query(sql, progress_callback=None):
             progress_callback(50, "Procesando resultados...")
 
         # Check if result has geometry (wkt column)
-        if 'wkt' in df.columns:
+        if "wkt" in df.columns:
             layer = _df_to_layer(df, progress_callback)
             return layer, None
         else:
@@ -614,7 +598,7 @@ def run_custom_query(sql, progress_callback=None):
 
 def _df_to_layer(df, progress_callback=None):
     """Convert DataFrame with wkt column to QgsVectorLayer"""
-    from qgis.core import QgsMessageLog, Qgis
+    from qgis.core import Qgis, QgsMessageLog
 
     layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "Resultado de Consulta SQL", "memory")
     provider = layer.dataProvider()
@@ -622,11 +606,11 @@ def _df_to_layer(df, progress_callback=None):
     # Build fields from non-geometry columns
     fields = []
     for col in df.columns:
-        if col == 'wkt':
+        if col == "wkt":
             continue
-        if df[col].dtype in ['int64', 'int32']:
+        if df[col].dtype in ["int64", "int32"]:
             fields.append(QgsField(col, QVariant.LongLong))
-        elif df[col].dtype in ['float64', 'float32']:
+        elif df[col].dtype in ["float64", "float32"]:
             fields.append(QgsField(col, QVariant.Double))
         else:
             fields.append(QgsField(col, QVariant.String))
@@ -638,11 +622,11 @@ def _df_to_layer(df, progress_callback=None):
         progress_callback(60, f"Agregando {len(df)} entidades...")
 
     features = []
-    non_wkt_cols = [c for c in df.columns if c != 'wkt']
+    non_wkt_cols = [c for c in df.columns if c != "wkt"]
 
     for idx, row in df.iterrows():
         feature = QgsFeature()
-        geom = QgsGeometry.fromWkt(row['wkt'])
+        geom = QgsGeometry.fromWkt(row["wkt"])
         if not geom.isNull():
             feature.setGeometry(geom)
             feature.setAttributes([row[c] for c in non_wkt_cols])
@@ -660,9 +644,7 @@ def _df_to_layer(df, progress_callback=None):
         progress_callback(100, "Listo")
 
     QgsMessageLog.logMessage(
-        f"Consulta SQL creó capa con {len(features)} entidades",
-        "Censo Argentino",
-        Qgis.Info
+        f"Consulta SQL creó capa con {len(features)} entidades", "Censo Argentino", Qgis.Info
     )
 
     return layer

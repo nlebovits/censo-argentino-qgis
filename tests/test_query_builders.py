@@ -1,9 +1,10 @@
 """Tests for query building functions."""
+
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from query_builders import build_geo_filter, build_spatial_filter, build_pivot_columns
+from query_builders import build_geo_filter, build_pivot_columns, build_spatial_filter
 
 
 class TestBuildGeoFilter:

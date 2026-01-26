@@ -21,7 +21,7 @@ def build_geo_filter(geo_level, geo_filters):
     geo_filter = ""
 
     if geo_level == "PROV":
-        placeholders = ', '.join(['?' for _ in geo_filters])
+        placeholders = ", ".join(["?" for _ in geo_filters])
         geo_filter = f" AND PROV IN ({placeholders})"
         query_params.extend(geo_filters)
 
@@ -29,7 +29,7 @@ def build_geo_filter(geo_level, geo_filters):
         # Parse "PROV-DEPTO" format
         filter_conditions = []
         for gf in geo_filters:
-            parts = gf.split('-')
+            parts = gf.split("-")
             if len(parts) == 2:
                 filter_conditions.append("(PROV = ? AND DEPTO = ?)")
                 query_params.extend(parts)
@@ -40,7 +40,7 @@ def build_geo_filter(geo_level, geo_filters):
         # Parse "PROV-DEPTO-FRACC" format
         filter_conditions = []
         for gf in geo_filters:
-            parts = gf.split('-')
+            parts = gf.split("-")
             if len(parts) == 3:
                 filter_conditions.append("(PROV = ? AND DEPTO = ? AND FRACC = ?)")
                 query_params.extend(parts)
@@ -48,7 +48,7 @@ def build_geo_filter(geo_level, geo_filters):
             geo_filter = f" AND ({' OR '.join(filter_conditions)})"
 
     elif geo_level == "RADIO":
-        placeholders = ', '.join(['?' for _ in geo_filters])
+        placeholders = ", ".join(["?" for _ in geo_filters])
         geo_filter = f" AND COD_2022 IN ({placeholders})"
         query_params.extend(geo_filters)
 
@@ -85,4 +85,4 @@ def build_pivot_columns(variable_codes):
     pivot_cols = []
     for vc in variable_codes:
         pivot_cols.append(f"MAX(CASE WHEN codigo_variable = '{vc}' THEN valor END) AS {vc}")
-    return ', '.join(pivot_cols)
+    return ", ".join(pivot_cols)

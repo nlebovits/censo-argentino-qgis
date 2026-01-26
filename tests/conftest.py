@@ -1,17 +1,19 @@
 """Shared test fixtures for censo-argentino-qgis tests."""
+
 import sys
-from unittest.mock import MagicMock
-import pytest
-from pathlib import Path
 import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
 
 # Mock QGIS modules before any imports
-sys.modules['qgis'] = MagicMock()
-sys.modules['qgis.core'] = MagicMock()
-sys.modules['qgis.PyQt'] = MagicMock()
-sys.modules['qgis.PyQt.QtCore'] = MagicMock()
-sys.modules['qgis.PyQt.QtWidgets'] = MagicMock()
-sys.modules['qgis.PyQt.QtGui'] = MagicMock()
+sys.modules["qgis"] = MagicMock()
+sys.modules["qgis.core"] = MagicMock()
+sys.modules["qgis.PyQt"] = MagicMock()
+sys.modules["qgis.PyQt.QtCore"] = MagicMock()
+sys.modules["qgis.PyQt.QtWidgets"] = MagicMock()
+sys.modules["qgis.PyQt.QtGui"] = MagicMock()
 
 
 @pytest.fixture

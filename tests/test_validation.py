@@ -1,4 +1,5 @@
 """Tests for SQL validation functions."""
+
 import sys
 from pathlib import Path
 

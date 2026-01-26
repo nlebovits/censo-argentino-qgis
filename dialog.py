@@ -1,19 +1,24 @@
 import os
 from datetime import datetime
-from qgis.PyQt import uic, QtWidgets
-from qgis.PyQt.QtCore import QCoreApplication, Qt, QThread, pyqtSignal, QTimer
-from qgis.PyQt.QtGui import QFont
-from qgis.core import QgsProject, QgsMessageLog, Qgis, QgsVectorLayer
-from qgis.utils import iface
-from .query import get_entity_types, get_variables, get_geographic_codes, load_census_layer, run_custom_query
 
-FORM_CLASS, _ = uic.loadUiType(os.path.join(
-    os.path.dirname(__file__), 'dialog.ui'))
+from qgis.core import Qgis, QgsMessageLog, QgsProject, QgsVectorLayer
+from qgis.PyQt import QtWidgets, uic
+from qgis.PyQt.QtCore import QCoreApplication, Qt, QThread, QTimer, pyqtSignal
+from qgis.PyQt.QtGui import QFont
+from qgis.utils import iface
+
+from .query import (
+    get_geographic_codes,
+    get_variables,
+    load_census_layer,
+    run_custom_query,
+)
+
+FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "dialog.ui"))
 
 
 EXAMPLE_QUERIES = {
     "-- Seleccionar un ejemplo --": "",
-
     "Población total por radio": """SELECT
     g.COD_2022 as geo_id,
     ST_AsText(g.geometry) as wkt,
@@ -22,7 +27,6 @@ FROM radios g
 JOIN census c ON g.COD_2022 = c.id_geo
 WHERE c.codigo_variable = 'POB_TOT_P'
 LIMIT 1000""",
-
     "Comparar dos variables (plantilla de ratio)": """-- Reemplazar VAR_A y VAR_B con códigos de variable reales
 SELECT
     g.COD_2022 as geo_id,
@@ -32,7 +36,6 @@ FROM radios g
 JOIN census a ON g.COD_2022 = a.id_geo AND a.codigo_variable = 'VAR_A'
 JOIN census b ON g.COD_2022 = b.id_geo AND b.codigo_variable = 'VAR_B'
 LIMIT 1000""",
-
     "Agregar a nivel departamental": """SELECT
     c.valor_provincia || '-' || c.valor_departamento as geo_id,
     ST_AsText(ST_Union_Agg(g.geometry)) as wkt,
@@ -41,7 +44,6 @@ FROM radios g
 JOIN census c ON g.COD_2022 = c.id_geo
 WHERE c.codigo_variable = 'POB_TOT_P'
 GROUP BY c.valor_provincia, c.valor_departamento""",
-
     "Filtrar por provincia": """SELECT
     g.COD_2022 as geo_id,
     ST_AsText(g.geometry) as wkt,
@@ -51,14 +53,12 @@ JOIN census c ON g.COD_2022 = c.id_geo
 WHERE c.codigo_variable = 'POB_TOT_P'
   AND c.etiqueta_provincia = 'Buenos Aires'
 LIMIT 1000""",
-
     "Listar variables disponibles": """SELECT DISTINCT
     entidad,
     codigo_variable,
     etiqueta_variable
 FROM metadata
 ORDER BY entidad, codigo_variable""",
-
     "Conteo por provincia": """-- Agrupa población total por provincia
 SELECT
     c.etiqueta_provincia as provincia,
@@ -72,6 +72,7 @@ ORDER BY poblacion_total DESC""",
 
 class DataLoaderThread(QThread):
     """Thread for loading data asynchronously"""
+
     finished = pyqtSignal(object, str)  # (result, data_type)
     error = pyqtSignal(str, str)  # (error_message, data_type)
 
@@ -92,7 +93,7 @@ class DataLoaderThread(QThread):
 
 class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
     def __init__(self, parent=None):
-        super(CensoArgentinoDialog, self).__init__(parent)
+        super().__init__(parent)
         self.setupUi(self)
 
         self.variables = {}  # Store mapping of variable codes to labels
@@ -162,7 +163,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         """Update progress bar and status"""
         # Capture query text if message starts with QUERY_TEXT:
         if message.startswith("QUERY_TEXT:"):
-            self.last_browse_query = message[len("QUERY_TEXT:"):]
+            self.last_browse_query = message[len("QUERY_TEXT:") :]
             return  # Don't show this as a status message
 
         self.progressBar.setValue(percent)
@@ -219,9 +220,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
     def on_data_load_error(self, error_message, data_type):
         """Handle errors during background data loading"""
         QgsMessageLog.logMessage(
-            f"Error loading {data_type}: {error_message}",
-            "Censo Argentino",
-            Qgis.Warning
+            f"Error loading {data_type}: {error_message}", "Censo Argentino", Qgis.Warning
         )
         self.check_loading_complete()
 
@@ -354,23 +353,22 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                 QgsMessageLog.logMessage(
                     f"Extensión original en {crs.authid()}: {extent.xMinimum()}, {extent.yMinimum()}, {extent.xMaximum()}, {extent.yMaximum()}",
                     "Censo Argentino",
-                    Qgis.Info
+                    Qgis.Info,
                 )
 
                 # Always transform to WGS84 (EPSG:4326) for querying
-                if crs.authid() != 'EPSG:4326':
-                    from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
+                if crs.authid() != "EPSG:4326":
+                    from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform
+
                     transform = QgsCoordinateTransform(
-                        crs,
-                        QgsCoordinateReferenceSystem('EPSG:4326'),
-                        QgsProject.instance()
+                        crs, QgsCoordinateReferenceSystem("EPSG:4326"), QgsProject.instance()
                     )
                     extent = transform.transformBoundingBox(extent)
 
                     QgsMessageLog.logMessage(
                         f"Extensión transformada a EPSG:4326: {extent.xMinimum()}, {extent.yMinimum()}, {extent.xMaximum()}, {extent.yMaximum()}",
                         "Censo Argentino",
-                        Qgis.Info
+                        Qgis.Info,
                     )
 
                 bbox = (extent.xMinimum(), extent.yMinimum(), extent.xMaximum(), extent.yMaximum())
@@ -378,7 +376,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                 QgsMessageLog.logMessage(
                     f"Error obteniendo extensión del mapa: {str(e)}",
                     "Censo Argentino",
-                    Qgis.Warning
+                    Qgis.Warning,
                 )
                 bbox = None
 
@@ -395,7 +393,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                 geo_level=geo_level,
                 geo_filters=geo_filters,
                 bbox=bbox,
-                progress_callback=self.update_progress
+                progress_callback=self.update_progress,
             )
 
             if layer.isValid():
@@ -407,28 +405,26 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                     self.log_query(query_text, "Browse")
 
                 if len(variable_codes) == 1:
-                    self.lblDescription.setText(f"¡Capa cargada exitosamente con 1 variable!")
+                    self.lblDescription.setText("¡Capa cargada exitosamente con 1 variable!")
                 else:
-                    self.lblDescription.setText(f"¡Capa cargada exitosamente con {len(variable_codes)} variables!")
+                    self.lblDescription.setText(
+                        f"¡Capa cargada exitosamente con {len(variable_codes)} variables!"
+                    )
                 QgsMessageLog.logMessage(
                     f"Capa cargada: {layer.name()} con {len(variable_codes)} variables",
                     "Censo Argentino",
-                    Qgis.Info
+                    Qgis.Info,
                 )
             else:
                 self.lblDescription.setText("Error: Capa inválida")
                 QgsMessageLog.logMessage(
-                    "Se creó una capa inválida",
-                    "Censo Argentino",
-                    Qgis.Critical
+                    "Se creó una capa inválida", "Censo Argentino", Qgis.Critical
                 )
 
         except Exception as e:
             self.lblDescription.setText(f"Error: {str(e)}")
             QgsMessageLog.logMessage(
-                f"Error cargando capa: {str(e)}",
-                "Censo Argentino",
-                Qgis.Critical
+                f"Error cargando capa: {str(e)}", "Censo Argentino", Qgis.Critical
             )
             # Log the query to Query Log tab even on error
             if self.last_browse_query:
@@ -475,7 +471,9 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         """Initialize Query Log tab"""
         font = QFont("Consolas, Monaco, Courier New, monospace", 9)
         self.txtQueryLog.setFont(font)
-        self.txtQueryLog.setPlainText("-- El registro de consultas aparecerá aquí\n-- Consultas de las pestañas Explorar y SQL\n\n")
+        self.txtQueryLog.setPlainText(
+            "-- El registro de consultas aparecerá aquí\n-- Consultas de las pestañas Explorar y SQL\n\n"
+        )
 
     def on_example_selected(self):
         """Load selected example into SQL editor"""
@@ -499,6 +497,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
 
         # Check for placeholder variables that need replacement
         from validation import validate_sql_placeholders
+
         placeholders = validate_sql_placeholders(sql)
 
         if placeholders:
@@ -535,19 +534,25 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                 # DataFrame result (no geometry) - show in table
                 row_count = len(result)
                 col_count = len(result.columns)
-                self.lblSqlStatus.setText(f"La consulta devolvió {row_count} filas con {col_count} columnas")
+                self.lblSqlStatus.setText(
+                    f"La consulta devolvió {row_count} filas con {col_count} columnas"
+                )
 
                 # Populate table widget
                 self.tblSqlResults.show()
-                self.tblSqlResults.setRowCount(min(row_count, 1000))  # Limit to 1000 rows for display
+                self.tblSqlResults.setRowCount(
+                    min(row_count, 1000)
+                )  # Limit to 1000 rows for display
                 self.tblSqlResults.setColumnCount(col_count)
                 self.tblSqlResults.setHorizontalHeaderLabels(list(result.columns))
 
                 # Populate data (limit to first 1000 rows)
-                for row_idx, (df_idx, row) in enumerate(result.head(1000).iterrows()):
+                for row_idx, (_df_idx, row) in enumerate(result.head(1000).iterrows()):
                     for col_idx, col_name in enumerate(result.columns):
                         value = str(row[col_name])
-                        self.tblSqlResults.setItem(row_idx, col_idx, QtWidgets.QTableWidgetItem(value))
+                        self.tblSqlResults.setItem(
+                            row_idx, col_idx, QtWidgets.QTableWidgetItem(value)
+                        )
 
                 # Resize columns to content
                 self.tblSqlResults.resizeColumnsToContents()
@@ -556,12 +561,14 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                 QgsMessageLog.logMessage(
                     f"Resultado de consulta SQL ({row_count} filas, {col_count} columnas):\n{result.to_string(max_rows=20)}",
                     "Censo Argentino",
-                    Qgis.Info
+                    Qgis.Info,
                 )
 
         except Exception as e:
             self.lblSqlStatus.setText(f"Error: {str(e)}")
-            QgsMessageLog.logMessage(f"Error de ejecución SQL: {str(e)}", "Censo Argentino", Qgis.Critical)
+            QgsMessageLog.logMessage(
+                f"Error de ejecución SQL: {str(e)}", "Censo Argentino", Qgis.Critical
+            )
 
         finally:
             self.progressBarSql.hide()
@@ -572,7 +579,9 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         if self.last_query:
             clipboard = QtWidgets.QApplication.clipboard()
             clipboard.setText(self.last_query)
-            QgsMessageLog.logMessage("Consulta copiada al portapapeles", "Censo Argentino", Qgis.Info)
+            QgsMessageLog.logMessage(
+                "Consulta copiada al portapapeles", "Censo Argentino", Qgis.Info
+            )
         else:
             QgsMessageLog.logMessage("No hay consulta para copiar", "Censo Argentino", Qgis.Warning)
 
