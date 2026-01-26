@@ -29,13 +29,13 @@
      <!-- BROWSE TAB -->
      <widget class="QWidget" name="tabBrowse">
       <attribute name="title">
-       <string>Browse</string>
+       <string>Explorar</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
         <widget class="QLabel" name="label">
          <property name="text">
-          <string>Year:</string>
+          <string>Año:</string>
          </property>
         </widget>
        </item>
@@ -45,7 +45,7 @@
        <item>
         <widget class="QLabel" name="label_4">
          <property name="text">
-          <string>Geographic Level:</string>
+          <string>Nivel Geográfico:</string>
          </property>
         </widget>
        </item>
@@ -55,7 +55,7 @@
        <item>
         <widget class="QLabel" name="label_5">
          <property name="text">
-          <string>Filter by Geography (optional):</string>
+          <string>Filtrar por Geografía (opcional):</string>
          </property>
         </widget>
        </item>
@@ -75,7 +75,7 @@
        <item>
         <widget class="QLabel" name="label_3">
          <property name="text">
-          <string>Entity Type:</string>
+          <string>Tipo de Entidad:</string>
          </property>
         </widget>
        </item>
@@ -85,19 +85,50 @@
        <item>
         <widget class="QLabel" name="label_2">
          <property name="text">
-          <string>Variables (check multiple):</string>
+          <string>Variables (marcar múltiples):</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QLineEdit" name="searchVariables">
          <property name="placeholderText">
-          <string>Search variables...</string>
+          <string>Buscar variables...</string>
          </property>
          <property name="clearButtonEnabled">
           <bool>true</bool>
          </property>
         </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QPushButton" name="btnSelectAllVars">
+           <property name="text">
+            <string>Seleccionar Todo</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnClearAllVars">
+           <property name="text">
+            <string>Limpiar Selección</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
        </item>
        <item>
         <widget class="QListWidget" name="listVariables">
@@ -158,21 +189,21 @@
        <item>
         <widget class="QCheckBox" name="chkFilterViewbox">
          <property name="text">
-          <string>Filter by current map extent</string>
+          <string>Filtrar por extensión actual del mapa</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QPushButton" name="btnLoad">
          <property name="text">
-          <string>Load Layer</string>
+          <string>Cargar Capa</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QLabel" name="lblSaveNotice">
          <property name="text">
-          <string>&lt;i&gt;Note: Layers are temporary. To save, right-click the layer in QGIS and select "Make Permanent".&lt;/i&gt;</string>
+          <string>&lt;i&gt;Nota: Las capas son temporales. Para guardar, haga clic derecho en la capa en QGIS y seleccione "Hacer permanente".&lt;/i&gt;</string>
          </property>
          <property name="wordWrap">
           <bool>true</bool>
@@ -194,7 +225,7 @@
        <item>
         <widget class="QLabel" name="lblSqlHelp">
          <property name="text">
-          <string>Available tables: &lt;b&gt;radios&lt;/b&gt;, &lt;b&gt;census&lt;/b&gt;, &lt;b&gt;metadata&lt;/b&gt;&lt;br/&gt;Include &lt;code&gt;ST_AsText(g.geometry) as wkt&lt;/code&gt; to load results as a map layer</string>
+          <string>Tablas disponibles: &lt;b&gt;radios&lt;/b&gt;, &lt;b&gt;census&lt;/b&gt;, &lt;b&gt;metadata&lt;/b&gt;&lt;br/&gt;Incluya &lt;code&gt;ST_AsText(g.geometry) as wkt&lt;/code&gt; para cargar resultados como capa de mapa</string>
          </property>
          <property name="textFormat">
           <enum>Qt::RichText</enum>
@@ -247,7 +278,7 @@
          <item>
           <widget class="QPushButton" name="btnRunSql">
            <property name="text">
-            <string>Run Query</string>
+            <string>Ejecutar Consulta</string>
            </property>
           </widget>
          </item>
@@ -271,6 +302,19 @@
         </widget>
        </item>
        <item>
+        <widget class="QTableWidget" name="tblSqlResults">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>150</height>
+          </size>
+         </property>
+         <property name="alternatingRowColors">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
         <spacer name="verticalSpacer_2">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -289,13 +333,13 @@
      <!-- QUERY LOG TAB -->
      <widget class="QWidget" name="tabQueryLog">
       <attribute name="title">
-       <string>Query Log</string>
+       <string>Registro de Consultas</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_4">
        <item>
         <widget class="QLabel" name="lblQueryLogHelp">
          <property name="text">
-          <string>Generated SQL queries from Browse tab and manual SQL tab queries appear here</string>
+          <string>Las consultas SQL generadas desde la pestaña Explorar y las consultas manuales SQL aparecen aquí</string>
          </property>
          <property name="wordWrap">
           <bool>true</bool>
@@ -319,14 +363,14 @@
          <item>
           <widget class="QPushButton" name="btnCopyQuery">
            <property name="text">
-            <string>Copy Last Query</string>
+            <string>Copiar Última Consulta</string>
            </property>
           </widget>
          </item>
          <item>
           <widget class="QPushButton" name="btnClearLog">
            <property name="text">
-            <string>Clear Log</string>
+            <string>Limpiar Registro</string>
            </property>
           </widget>
          </item>

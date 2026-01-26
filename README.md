@@ -1,115 +1,115 @@
-# Censo Argentino QGIS Plugin
+# Plugin de Censo Argentino para QGIS
 
-A QGIS plugin to load Argentina census data from Source.Coop. The plugin queries parquet files via DuckDB and loads results as vector layers directly in QGIS.
+Un plugin de QGIS para cargar datos del censo argentino desde Source.Coop. El plugin consulta archivos parquet mediante DuckDB y carga resultados como capas vectoriales directamente en QGIS.
 
-## Data Source
+## Fuente de Datos
 
-Data is loaded from: `https://data.source.coop/nlebovits/censo-argentino/2022/`
+Los datos se cargan desde: `https://data.source.coop/nlebovits/censo-argentino/2022/`
 
-Files:
-- `radios.parquet` — GeoParquet with geometries
-- `census-data.parquet` — Census variables in long format
-- `metadata.parquet` — Variable codes and labels
+Archivos:
+- `radios.parquet` — GeoParquet con geometrías
+- `census-data.parquet` — Variables del censo en formato largo
+- `metadata.parquet` — Códigos y etiquetas de variables
 
-## Installation
+## Instalación
 
-### 1. Install the plugin
+### 1. Instalar el plugin
 
-Copy this directory to your QGIS plugins folder:
+Copie este directorio a su carpeta de plugins de QGIS:
 - **Linux**: `~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/`
 - **macOS**: `~/Library/Application Support/QGIS/QGIS3/profiles/default/python/plugins/`
-- **Windows**: `C:\Users\<username>\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\`
+- **Windows**: `C:\Users\<usuario>\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\`
 
-Or use a symlink:
+O use un enlace simbólico:
 ```bash
 ln -s ~/Documents/dev/censo-argentino-qgis ~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/censo-argentino-qgis
 ```
 
-### 2. Install DuckDB dependency
+### 2. Instalar la dependencia DuckDB
 
-The plugin requires the DuckDB Python package. Install it into QGIS's Python environment:
+El plugin requiere el paquete Python de DuckDB. Instálelo en el entorno Python de QGIS:
 
 #### Linux/macOS
 ```bash
-# For system QGIS
+# Para QGIS del sistema
 pip3 install duckdb --target ~/.local/share/QGIS/QGIS3/profiles/default/python/
 
-# For Flatpak QGIS
+# Para QGIS Flatpak
 pip3 install duckdb --target ~/.var/app/org.qgis.qgis/data/QGIS/QGIS3/profiles/default/python/
 ```
 
 #### Windows
 ```bash
-# Open OSGeo4W Shell as administrator, then:
+# Abra OSGeo4W Shell como administrador, luego:
 python -m pip install duckdb
 ```
 
-### 3. Enable the plugin
+### 3. Habilitar el plugin
 
-1. Open QGIS
-2. Go to **Plugins > Manage and Install Plugins**
-3. Click **Installed**
-4. Find **Censo Argentino** and check the box to enable it
+1. Abra QGIS
+2. Vaya a **Complementos > Administrar e instalar complementos**
+3. Haga clic en **Instalados**
+4. Encuentre **Censo Argentino** y marque la casilla para habilitarlo
 
-## Usage
+## Uso
 
-1. Click the **Censo Argentino** toolbar icon or go to **Plugins > Censo Argentino**
-2. Select year (currently only 2022 available)
-3. Select geographic level (Census Tract, Fraction, Department, or Province)
-4. (Optional) Filter by specific geographic areas by checking them in the list
-5. Select entity type (Household, Person, or Dwelling)
-6. Search and check one or more census variables
-7. (Optional) Check "Filter by current map extent" to load only visible data
-8. Click **Load Layer**
+1. Haga clic en el ícono de **Censo Argentino** en la barra de herramientas o vaya a **Complementos > Censo Argentino**
+2. Seleccione el año (actualmente solo está disponible 2022)
+3. Seleccione el nivel geográfico (Radio Censal, Fracción, Departamento o Provincia)
+4. (Opcional) Filtre por áreas geográficas específicas marcándolas en la lista
+5. Seleccione el tipo de entidad (Hogar, Persona o Vivienda)
+6. Busque y marque una o más variables del censo
+7. (Opcional) Marque "Filtrar por extensión actual del mapa" para cargar solo datos visibles
+8. Haga clic en **Cargar Capa**
 
-The census data will be loaded as a single polygon layer with all selected variables as attribute columns.
+Los datos del censo se cargarán como una única capa de polígonos con todas las variables seleccionadas como columnas de atributos.
 
-### Caching
+### Caché
 
-Metadata (variables and geographic codes) is automatically cached in `~/.cache/qgis-censo-argentino/` after the first load. This makes subsequent dialog opens nearly instant. The cache is safe to delete - it will be rebuilt on next use.
+Los metadatos (variables y códigos geográficos) se almacenan automáticamente en caché en `~/.cache/qgis-censo-argentino/` después de la primera carga. Esto hace que las aperturas posteriores del diálogo sean casi instantáneas. Es seguro eliminar el caché: se reconstruirá en el próximo uso.
 
-## SQL Query Mode
+## Modo de Consulta SQL
 
-For advanced users, the plugin provides direct SQL access to the census data via DuckDB.
+Para usuarios avanzados, el plugin proporciona acceso SQL directo a los datos del censo mediante DuckDB.
 
-### Available Tables
+### Tablas Disponibles
 
-| Table | Description |
+| Tabla | Descripción |
 |-------|-------------|
-| `radios` | Census tract geometries (COD_2022, PROV, DEPTO, FRACC, RADIO, geometry) |
-| `census` | Census data in long format (id_geo, codigo_variable, conteo, valor_provincia, etiqueta_provincia, etc.) |
-| `metadata` | Variable definitions (codigo_variable, etiqueta_variable, entidad) |
+| `radios` | Geometrías de radios censales (COD_2022, PROV, DEPTO, FRACC, RADIO, geometry) |
+| `census` | Datos del censo en formato largo (id_geo, codigo_variable, conteo, valor_provincia, etiqueta_provincia, etc.) |
+| `metadata` | Definiciones de variables (codigo_variable, etiqueta_variable, entidad) |
 
-### Creating Map Layers from SQL
+### Crear Capas de Mapa desde SQL
 
-To load query results as a map layer, your query must include geometry as WKT with the column name `wkt`:
+Para cargar resultados de consultas como capa de mapa, su consulta debe incluir la geometría como WKT con el nombre de columna `wkt`:
 
 ```sql
 SELECT
     g.COD_2022 as geo_id,
-    ST_AsText(g.geometry) as wkt,  -- Required for map layer
-    c.conteo as population
+    ST_AsText(g.geometry) as wkt,  -- Requerido para capa de mapa
+    c.conteo as poblacion
 FROM radios g
 JOIN census c ON g.COD_2022 = c.id_geo
 WHERE c.codigo_variable = 'POB_TOT_P'
 ```
 
-Queries without a `wkt` column will return results to the QGIS log panel (View → Panels → Log Messages → "Censo Argentino").
+Las consultas sin una columna `wkt` devolverán resultados al panel de registro de QGIS (Ver → Paneles → Mensajes de registro → "Censo Argentino").
 
-### Example: Calculate a Ratio
+### Ejemplo: Calcular un Ratio
 
 ```sql
--- Percentage of variable A relative to variable B
+-- Porcentaje de variable A relativo a variable B
 SELECT
     g.COD_2022 as geo_id,
     ST_AsText(g.geometry) as wkt,
-    (a.conteo::float / NULLIF(b.conteo, 0)) * 100 as percentage
+    (a.conteo::float / NULLIF(b.conteo, 0)) * 100 as porcentaje
 FROM radios g
 JOIN census a ON g.COD_2022 = a.id_geo AND a.codigo_variable = 'VAR_A'
 JOIN census b ON g.COD_2022 = b.id_geo AND b.codigo_variable = 'VAR_B'
 ```
 
-### Example: Aggregate to Department Level
+### Ejemplo: Agregar a Nivel Departamental
 
 ```sql
 SELECT
@@ -122,9 +122,9 @@ WHERE c.codigo_variable = 'POB_TOT_P'
 GROUP BY c.valor_provincia, c.valor_departamento
 ```
 
-### Finding Variable Codes
+### Encontrar Códigos de Variables
 
-Use the "List available variables" example query or run:
+Use la consulta de ejemplo "Listar variables disponibles" o ejecute:
 
 ```sql
 SELECT DISTINCT entidad, codigo_variable, etiqueta_variable
@@ -132,47 +132,47 @@ FROM metadata
 ORDER BY entidad, codigo_variable
 ```
 
-### Query Log Tab
+### Pestaña de Registro de Consultas
 
-All queries (from Browse tab and SQL tab) are automatically logged to the Query Log tab. You can:
-- View the generated SQL from Browse tab selections
-- Copy queries to clipboard for reuse or debugging
-- Clear the log at any time
+Todas las consultas (de las pestañas Explorar y SQL) se registran automáticamente en la pestaña Registro de Consultas. Puede:
+- Ver el SQL generado desde las selecciones de la pestaña Explorar
+- Copiar consultas al portapapeles para reutilizarlas o depurarlas
+- Borrar el registro en cualquier momento
 
-This is invaluable for learning DuckDB SQL syntax and debugging filter issues.
+Esto es invaluable para aprender la sintaxis SQL de DuckDB y depurar problemas de filtros.
 
-## Features
+## Características
 
-- **Direct access** to Source.Coop hosted census data
-- **No local data download** required for actual census data
-- **Automatic caching** of metadata (variables and geographic codes) for faster subsequent loads
-- **Multi-variable support** - load multiple variables in a single layer
-- **Geographic level selection** - Census Tract, Fraction, Department, or Province
-- **Entity type filtering** - Filter by Household, Person, or Dwelling variables
-- **Geographic filtering** - Optionally filter by specific provinces/departments
-- **Viewport filtering** - Load only data visible in current map extent
-- **Variable search** - Quick search through hundreds of census variables
-- **Async loading** - Background data loading keeps UI responsive
-- **Automatic geometry aggregation** for higher geographic levels
-- **SQL Query Mode** - Direct DuckDB SQL access for advanced queries, ratios, and custom aggregations
-- **Query Log** - View and copy generated SQL from both Browse and SQL tabs for learning and debugging
+- **Acceso directo** a datos del censo alojados en Source.Coop
+- **No se requiere descarga local** de datos del censo
+- **Caché automático** de metadatos (variables y códigos geográficos) para cargas posteriores más rápidas
+- **Soporte multi-variable** - cargue múltiples variables en una sola capa
+- **Selección de nivel geográfico** - Radio Censal, Fracción, Departamento o Provincia
+- **Filtrado por tipo de entidad** - Filtre por variables de Hogar, Persona o Vivienda
+- **Filtrado geográfico** - Opcionalmente filtre por provincias/departamentos específicos
+- **Filtrado por ventana** - Cargue solo datos visibles en la extensión actual del mapa
+- **Búsqueda de variables** - Búsqueda rápida entre cientos de variables del censo
+- **Carga asíncrona** - La carga de datos en segundo plano mantiene la interfaz receptiva
+- **Agregación automática de geometría** para niveles geográficos superiores
+- **Modo de Consulta SQL** - Acceso SQL directo de DuckDB para consultas avanzadas, ratios y agregaciones personalizadas
+- **Registro de Consultas** - Vea y copie SQL generado desde las pestañas Explorar y SQL para aprender y depurar
 
-## Requirements
+## Requisitos
 
-- QGIS 3.0 or higher
-- DuckDB Python package
-- Internet connection
+- QGIS 3.0 o superior
+- Paquete Python de DuckDB
+- Conexión a Internet
 
-## Development
+## Desarrollo
 
-To modify the UI:
-1. Edit `dialog.ui` with Qt Designer
-2. Restart QGIS to see changes
+Para modificar la interfaz:
+1. Edite `dialog.ui` con Qt Designer
+2. Reinicie QGIS para ver los cambios
 
-## License
+## Licencia
 
 MIT
 
-## Author
+## Autor
 
 Nissim Lebovits

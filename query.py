@@ -6,6 +6,41 @@ from qgis.core import QgsVectorLayer, QgsFeature, QgsGeometry, QgsField, QgsFiel
 from qgis.PyQt.QtCore import QVariant
 
 
+class DuckDBConnectionPool:
+    """Singleton connection pool for DuckDB to avoid repeated connection/extension setup"""
+    _instance = None
+    _connection = None
+    _extensions_loaded = False
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(DuckDBConnectionPool, cls).__new__(cls)
+        return cls._instance
+
+    def get_connection(self, load_extensions=True):
+        """Get or create a DuckDB connection with extensions loaded"""
+        if self._connection is None:
+            self._connection = duckdb.connect()
+
+        if load_extensions and not self._extensions_loaded:
+            self._connection.execute("INSTALL httpfs; LOAD httpfs;")
+            self._connection.execute("INSTALL spatial; LOAD spatial;")
+            self._extensions_loaded = True
+
+        return self._connection
+
+    def close(self):
+        """Close the connection (typically only needed on plugin unload)"""
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None
+            self._extensions_loaded = False
+
+
+# Global connection pool instance
+_connection_pool = DuckDBConnectionPool()
+
+
 def get_cache_dir():
     """Get or create cache directory for census data"""
     cache_dir = Path.home() / '.cache' / 'qgis-censo-argentino'
@@ -45,18 +80,17 @@ def get_entity_types(progress_callback=None):
     cached = get_cached_data(cache_key)
     if cached is not None:
         if progress_callback:
-            progress_callback(100, "Entity types loaded from cache")
+            progress_callback(100, "Tipos de entidad cargados desde caché")
         return cached
 
     try:
         if progress_callback:
-            progress_callback(10, "Connecting to data source...")
+            progress_callback(10, "Conectando a fuente de datos...")
 
-        con = duckdb.connect()
-        con.execute("INSTALL httpfs; LOAD httpfs;")
+        con = _connection_pool.get_connection(load_extensions=True)
 
         if progress_callback:
-            progress_callback(50, "Loading entity types...")
+            progress_callback(50, "Cargando tipos de entidad...")
 
         query = """
             SELECT DISTINCT entidad
@@ -66,7 +100,7 @@ def get_entity_types(progress_callback=None):
         """
 
         result = con.execute(query).fetchall()
-        con.close()
+        # Don't close - keep connection alive in pool
 
         entity_types = [row[0] for row in result]
 
@@ -74,11 +108,11 @@ def get_entity_types(progress_callback=None):
         save_cached_data(cache_key, entity_types)
 
         if progress_callback:
-            progress_callback(100, "Entity types loaded")
+            progress_callback(100, "Tipos de entidad cargados")
 
         return entity_types
     except Exception as e:
-        raise Exception(f"Error loading entity types: {str(e)}")
+        raise Exception(f"Error cargando tipos de entidad: {str(e)}")
 
 
 def get_geographic_codes(geo_level="PROV", progress_callback=None):
@@ -97,19 +131,18 @@ def get_geographic_codes(geo_level="PROV", progress_callback=None):
     cached = get_cached_data(cache_key)
     if cached is not None:
         if progress_callback:
-            progress_callback(100, f"{geo_level} codes loaded from cache")
+            progress_callback(100, f"Códigos de {geo_level} cargados desde caché")
         # Convert back to tuples
         return [(item[0], item[1]) for item in cached]
 
     try:
         if progress_callback:
-            progress_callback(10, "Connecting to data source...")
+            progress_callback(10, "Conectando a fuente de datos...")
 
-        con = duckdb.connect()
-        con.execute("INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;")
+        con = _connection_pool.get_connection(load_extensions=True)
 
         if progress_callback:
-            progress_callback(50, f"Loading {geo_level} codes...")
+            progress_callback(50, f"Cargando códigos de {geo_level}...")
 
         # Define queries based on geographic level
         geo_queries = {
@@ -133,7 +166,6 @@ def get_geographic_codes(geo_level="PROV", progress_callback=None):
                     c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Fracc ' || c.valor_fraccion as label
                 FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
                 ORDER BY c.valor_provincia, c.valor_departamento, c.valor_fraccion
-                LIMIT 100
             """,
             "RADIO": """
                 SELECT DISTINCT
@@ -141,13 +173,12 @@ def get_geographic_codes(geo_level="PROV", progress_callback=None):
                     c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Radio ' || c.valor_radio as label
                 FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
                 ORDER BY c.valor_provincia, c.valor_departamento, c.valor_fraccion, c.valor_radio
-                LIMIT 100
             """
         }
 
         query = geo_queries.get(geo_level, geo_queries["PROV"])
         result = con.execute(query).fetchall()
-        con.close()
+        # Don't close - keep connection alive in pool
 
         geo_codes = [(row[0], row[1]) for row in result]
 
@@ -155,11 +186,11 @@ def get_geographic_codes(geo_level="PROV", progress_callback=None):
         save_cached_data(cache_key, geo_codes)
 
         if progress_callback:
-            progress_callback(100, "Geographic codes loaded")
+            progress_callback(100, "Códigos geográficos cargados")
 
         return geo_codes
     except Exception as e:
-        raise Exception(f"Error loading geographic codes: {str(e)}")
+        raise Exception(f"Error cargando códigos geográficos: {str(e)}")
 
 
 def get_variables(entity_type=None, progress_callback=None):
@@ -170,19 +201,18 @@ def get_variables(entity_type=None, progress_callback=None):
     cached = get_cached_data(cache_key)
     if cached is not None:
         if progress_callback:
-            progress_callback(100, "Variables loaded from cache")
+            progress_callback(100, "Variables cargadas desde caché")
         # Convert back to tuples
         return [(item[0], item[1]) for item in cached]
 
     try:
         if progress_callback:
-            progress_callback(10, "Connecting to data source...")
+            progress_callback(10, "Conectando a fuente de datos...")
 
-        con = duckdb.connect()
-        con.execute("INSTALL httpfs; LOAD httpfs;")
+        con = _connection_pool.get_connection(load_extensions=True)
 
         if progress_callback:
-            progress_callback(30, "Loading variable metadata...")
+            progress_callback(30, "Cargando metadatos de variables...")
 
         if entity_type:
             query = """
@@ -200,7 +230,7 @@ def get_variables(entity_type=None, progress_callback=None):
             """
             result = con.execute(query).fetchall()
 
-        con.close()
+        # Don't close - keep connection alive in pool
 
         variables = [(row[0], row[1]) for row in result]
 
@@ -208,11 +238,11 @@ def get_variables(entity_type=None, progress_callback=None):
         save_cached_data(cache_key, variables)
 
         if progress_callback:
-            progress_callback(100, "Variables loaded")
+            progress_callback(100, "Variables cargadas")
 
         return variables
     except Exception as e:
-        raise Exception(f"Error loading variables: {str(e)}")
+        raise Exception(f"Error cargando variables: {str(e)}")
 
 
 def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=None, progress_callback=None):
@@ -233,17 +263,12 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
         variable_codes = [variable_codes]
     try:
         if progress_callback:
-            progress_callback(2, "Initializing DuckDB connection...")
+            progress_callback(2, "Inicializando conexión DuckDB...")
 
-        con = duckdb.connect()
-
-        if progress_callback:
-            progress_callback(5, "Loading DuckDB extensions...")
-
-        con.execute("INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;")
+        con = _connection_pool.get_connection(load_extensions=True)
 
         if progress_callback:
-            progress_callback(10, f"Preparing query for {geo_level} level...")
+            progress_callback(10, f"Preparando consulta para nivel {geo_level}...")
 
         # Define grouping columns and ID fields based on geographic level
         geo_config = {
@@ -368,53 +393,53 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
             """
 
         if progress_callback:
-            progress_callback(20, "Building query...")
+            progress_callback(20, "Construyendo consulta...")
 
         # Log the query for debugging
         from qgis.core import QgsMessageLog, Qgis
         QgsMessageLog.logMessage(
-            "=== CENSO QUERY DEBUG ===",
+            "=== DEBUG DE CONSULTA CENSO ===",
             "Censo Argentino",
             Qgis.Info
         )
         QgsMessageLog.logMessage(
-            f"Geo Level: {geo_level}",
+            f"Nivel Geográfico: {geo_level}",
             "Censo Argentino",
             Qgis.Info
         )
         QgsMessageLog.logMessage(
-            f"Variable codes: {variable_codes}",
+            f"Códigos de variables: {variable_codes}",
             "Censo Argentino",
             Qgis.Info
         )
         QgsMessageLog.logMessage(
-            f"Geo filters: {geo_filters if geo_filters else 'None'}",
+            f"Filtros geográficos: {geo_filters if geo_filters else 'Ninguno'}",
             "Censo Argentino",
             Qgis.Info
         )
         if bbox:
             QgsMessageLog.logMessage(
-                f"Bbox filter: {bbox}",
+                f"Filtro bbox: {bbox}",
                 "Censo Argentino",
                 Qgis.Info
             )
         QgsMessageLog.logMessage(
-            f"Query parameters: {query_params}",
+            f"Parámetros de consulta: {query_params}",
             "Censo Argentino",
             Qgis.Info
         )
         QgsMessageLog.logMessage(
-            f"Geo filter SQL: {geo_filter if geo_filter else 'None'}",
+            f"Filtro geográfico SQL: {geo_filter if geo_filter else 'Ninguno'}",
             "Censo Argentino",
             Qgis.Info
         )
         QgsMessageLog.logMessage(
-            f"Spatial filter SQL: {spatial_filter if spatial_filter else 'None'}",
+            f"Filtro espacial SQL: {spatial_filter if spatial_filter else 'Ninguno'}",
             "Censo Argentino",
             Qgis.Info
         )
         QgsMessageLog.logMessage(
-            f"Full Query:\n{query}",
+            f"Consulta completa:\n{query}",
             "Censo Argentino",
             Qgis.Info
         )
@@ -432,34 +457,34 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
             progress_callback(25, f"QUERY_TEXT:{logged_query}")
 
         if progress_callback:
-            progress_callback(30, "Executing query...")
+            progress_callback(30, "Ejecutando consulta...")
 
         df = con.execute(query, query_params).df()
 
         if progress_callback:
-            progress_callback(60, f"Query returned {len(df)} rows...")
+            progress_callback(60, f"La consulta devolvió {len(df)} filas...")
 
-        con.close()
+        # Don't close - keep connection alive in pool
 
         if df.empty:
-            error_msg = "No data returned for selected filters."
+            error_msg = "No se devolvieron datos para los filtros seleccionados."
             if bbox:
-                error_msg += f" Try zooming out or disabling viewport filtering. Bbox used: {bbox}"
+                error_msg += f" Intente alejar el zoom o deshabilite el filtro de ventana. Bbox usado: {bbox}"
             if geo_filters:
-                error_msg += f" Geographic filters: {geo_filters}"
+                error_msg += f" Filtros geográficos: {geo_filters}"
             QgsMessageLog.logMessage(
                 f"ERROR: {error_msg}",
                 "Censo Argentino",
                 Qgis.Warning
             )
             # Create a dummy layer just to store the query for logging
-            error_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "Error - No Data", "memory")
+            error_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "Error - Sin Datos", "memory")
             error_layer.setCustomProperty("censo_query", query)
             error_layer.setCustomProperty("censo_error", error_msg)
             raise Exception(error_msg)
 
         if progress_callback:
-            progress_callback(70, "Creating layer...")
+            progress_callback(70, "Creando capa...")
 
         # Create layer name with variable list
         if len(variable_codes) == 1:
@@ -479,7 +504,7 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
         layer.updateFields()
 
         if progress_callback:
-            progress_callback(75, f"Processing {len(df)} features...")
+            progress_callback(75, f"Procesando {len(df)} entidades...")
 
         # Add features
         features = []
@@ -491,7 +516,7 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
             geom = QgsGeometry.fromWkt(row['wkt'])
 
             if geom.isNull():
-                raise Exception(f"Invalid geometry for feature {row['geo_id']}")
+                raise Exception(f"Geometría inválida para entidad {row['geo_id']}")
 
             feature.setGeometry(geom)
 
@@ -508,23 +533,23 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
             # Update progress more frequently for better feedback
             if progress_callback and (idx % 50 == 0 or idx == total_rows - 1):
                 percent = 75 + int((idx / total_rows) * 20)
-                progress_callback(percent, f"Processing features: {idx + 1}/{total_rows}")
+                progress_callback(percent, f"Procesando entidades: {idx + 1}/{total_rows}")
 
         if progress_callback:
-            progress_callback(96, "Adding features to layer...")
+            progress_callback(96, "Agregando entidades a la capa...")
 
         provider.addFeatures(features)
 
         if progress_callback:
-            progress_callback(98, "Updating layer extents...")
+            progress_callback(98, "Actualizando extensiones de la capa...")
 
         layer.updateExtents()
 
         if progress_callback:
-            progress_callback(100, "Layer loaded successfully")
+            progress_callback(100, "Capa cargada exitosamente")
 
         QgsMessageLog.logMessage(
-            f"Successfully loaded {len(features)} features with {len(variable_codes)} variables",
+            f"Se cargaron exitosamente {len(features)} entidades con {len(variable_codes)} variables",
             "Censo Argentino",
             Qgis.Info
         )
@@ -535,7 +560,7 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
         return layer
 
     except Exception as e:
-        raise Exception(f"Error loading census layer: {str(e)}")
+        raise Exception(f"Error cargando capa censal: {str(e)}")
 
 
 def run_custom_query(sql, progress_callback=None):
@@ -551,13 +576,12 @@ def run_custom_query(sql, progress_callback=None):
     """
     try:
         if progress_callback:
-            progress_callback(10, "Connecting to data source...")
+            progress_callback(10, "Conectando a fuente de datos...")
 
-        con = duckdb.connect()
-        con.execute("INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;")
+        con = _connection_pool.get_connection(load_extensions=True)
 
         if progress_callback:
-            progress_callback(20, "Creating table views...")
+            progress_callback(20, "Creando vistas de tablas...")
 
         con.execute("""
             CREATE VIEW radios AS SELECT * FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet';
@@ -566,16 +590,16 @@ def run_custom_query(sql, progress_callback=None):
         """)
 
         if progress_callback:
-            progress_callback(30, "Running query...")
+            progress_callback(30, "Ejecutando consulta...")
 
         df = con.execute(sql).df()
-        con.close()
+        # Don't close - keep connection alive in pool
 
         if df.empty:
-            return None, "Query returned no results"
+            return None, "La consulta no devolvió resultados"
 
         if progress_callback:
-            progress_callback(50, "Processing results...")
+            progress_callback(50, "Procesando resultados...")
 
         # Check if result has geometry (wkt column)
         if 'wkt' in df.columns:
@@ -592,7 +616,7 @@ def _df_to_layer(df, progress_callback=None):
     """Convert DataFrame with wkt column to QgsVectorLayer"""
     from qgis.core import QgsMessageLog, Qgis
 
-    layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "SQL Query Result", "memory")
+    layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "Resultado de Consulta SQL", "memory")
     provider = layer.dataProvider()
 
     # Build fields from non-geometry columns
@@ -611,7 +635,7 @@ def _df_to_layer(df, progress_callback=None):
     layer.updateFields()
 
     if progress_callback:
-        progress_callback(60, f"Adding {len(df)} features...")
+        progress_callback(60, f"Agregando {len(df)} entidades...")
 
     features = []
     non_wkt_cols = [c for c in df.columns if c != 'wkt']
@@ -627,16 +651,16 @@ def _df_to_layer(df, progress_callback=None):
         # Update progress
         if progress_callback and idx % 50 == 0:
             percent = 60 + int((idx / len(df)) * 35)
-            progress_callback(percent, f"Processing features: {idx + 1}/{len(df)}")
+            progress_callback(percent, f"Procesando entidades: {idx + 1}/{len(df)}")
 
     provider.addFeatures(features)
     layer.updateExtents()
 
     if progress_callback:
-        progress_callback(100, "Done")
+        progress_callback(100, "Listo")
 
     QgsMessageLog.logMessage(
-        f"SQL query created layer with {len(features)} features",
+        f"Consulta SQL creó capa con {len(features)} entidades",
         "Censo Argentino",
         Qgis.Info
     )

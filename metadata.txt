@@ -1,8 +1,8 @@
 [general]
 name=Censo Argentino
-description=Load Argentina census data from Source.Coop
+description=Carga datos del censo argentino desde Source.Coop
 version=0.1.0
 qgisMinimumVersion=3.0
 author=Nissim Lebovits
-email=nissim@example.com
+email=nlebovits@pm.me
 repository=https://github.com/nlebovits/censo-argentino-qgis
