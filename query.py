@@ -233,13 +233,17 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
         variable_codes = [variable_codes]
     try:
         if progress_callback:
-            progress_callback(5, "Connecting to data source...")
+            progress_callback(2, "Initializing DuckDB connection...")
 
         con = duckdb.connect()
+
+        if progress_callback:
+            progress_callback(5, "Loading DuckDB extensions...")
+
         con.execute("INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;")
 
         if progress_callback:
-            progress_callback(15, f"Querying census data at {geo_level} level...")
+            progress_callback(10, f"Preparing query for {geo_level} level...")
 
         # Define grouping columns and ID fields based on geographic level
         geo_config = {
@@ -364,33 +368,82 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
             """
 
         if progress_callback:
-            progress_callback(30, "Streaming query results...")
+            progress_callback(20, "Building query...")
 
         # Log the query for debugging
         from qgis.core import QgsMessageLog, Qgis
         QgsMessageLog.logMessage(
-            f"Query params: {query_params}",
+            "=== CENSO QUERY DEBUG ===",
+            "Censo Argentino",
+            Qgis.Info
+        )
+        QgsMessageLog.logMessage(
+            f"Geo Level: {geo_level}",
+            "Censo Argentino",
+            Qgis.Info
+        )
+        QgsMessageLog.logMessage(
+            f"Variable codes: {variable_codes}",
+            "Censo Argentino",
+            Qgis.Info
+        )
+        QgsMessageLog.logMessage(
+            f"Geo filters: {geo_filters if geo_filters else 'None'}",
             "Censo Argentino",
             Qgis.Info
         )
         if bbox:
             QgsMessageLog.logMessage(
-                f"Using bbox filter: {bbox}",
+                f"Bbox filter: {bbox}",
                 "Censo Argentino",
                 Qgis.Info
             )
+        QgsMessageLog.logMessage(
+            f"Query parameters: {query_params}",
+            "Censo Argentino",
+            Qgis.Info
+        )
+        QgsMessageLog.logMessage(
+            f"Geo filter SQL: {geo_filter if geo_filter else 'None'}",
+            "Censo Argentino",
+            Qgis.Info
+        )
+        QgsMessageLog.logMessage(
+            f"Spatial filter SQL: {spatial_filter if spatial_filter else 'None'}",
+            "Censo Argentino",
+            Qgis.Info
+        )
+        QgsMessageLog.logMessage(
+            f"Full Query:\n{query}",
+            "Censo Argentino",
+            Qgis.Info
+        )
+
+        if progress_callback:
+            progress_callback(30, "Executing query...")
 
         df = con.execute(query, query_params).df()
+
+        if progress_callback:
+            progress_callback(60, f"Query returned {len(df)} rows...")
+
         con.close()
 
         if df.empty:
             error_msg = "No data returned for selected filters."
             if bbox:
                 error_msg += f" Try zooming out or disabling viewport filtering. Bbox used: {bbox}"
+            if geo_filters:
+                error_msg += f" Geographic filters: {geo_filters}"
+            QgsMessageLog.logMessage(
+                f"ERROR: {error_msg}",
+                "Censo Argentino",
+                Qgis.Warning
+            )
             raise Exception(error_msg)
 
         if progress_callback:
-            progress_callback(50, "Creating layer...")
+            progress_callback(70, "Creating layer...")
 
         # Create layer name with variable list
         if len(variable_codes) == 1:
@@ -410,7 +463,7 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
         layer.updateFields()
 
         if progress_callback:
-            progress_callback(60, f"Adding {len(df)} features...")
+            progress_callback(75, f"Processing {len(df)} features...")
 
         # Add features
         features = []
@@ -436,19 +489,29 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
             feature.setAttributes(attributes)
             features.append(feature)
 
-            # Update progress every 100 features
-            if progress_callback and idx % 100 == 0:
-                percent = 60 + int((idx / total_rows) * 30)
-                progress_callback(percent, f"Processing features: {idx}/{total_rows}")
+            # Update progress more frequently for better feedback
+            if progress_callback and (idx % 50 == 0 or idx == total_rows - 1):
+                percent = 75 + int((idx / total_rows) * 20)
+                progress_callback(percent, f"Processing features: {idx + 1}/{total_rows}")
 
         if progress_callback:
-            progress_callback(90, "Finalizing layer...")
+            progress_callback(96, "Adding features to layer...")
 
         provider.addFeatures(features)
+
+        if progress_callback:
+            progress_callback(98, "Updating layer extents...")
+
         layer.updateExtents()
 
         if progress_callback:
             progress_callback(100, "Layer loaded successfully")
+
+        QgsMessageLog.logMessage(
+            f"Successfully loaded {len(features)} features with {len(variable_codes)} variables",
+            "Censo Argentino",
+            Qgis.Info
+        )
 
         return layer
 
