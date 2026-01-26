@@ -2,7 +2,7 @@
 name=Censo Argentino
 description=Carga datos del censo argentino desde Source.Coop
 about=Plugin para cargar y analizar datos del Censo Nacional 2022 de Argentina alojados en Source.Coop. Consulta archivos Parquet remotos mediante DuckDB sin necesidad de descargas. Incluye interfaz visual para explorar variables, filtros geográficos, modo SQL avanzado y caché automático de metadatos.
-version=0.3.0
+version=0.3.1
 qgisMinimumVersion=3.0
 author=Nissim Lebovits
 email=nlebovits@pm.me
