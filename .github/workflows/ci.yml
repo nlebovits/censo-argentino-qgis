@@ -19,7 +19,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install ruff
+          pip install -r requirements-dev.txt
 
       - name: Check code formatting
         run: ruff format --check .
@@ -44,7 +44,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pytest pytest-cov duckdb
+          pip install -r requirements-dev.txt
 
       - name: Pre-install DuckDB extensions
         run: |

@@ -1,31 +1,6 @@
-[project]
-name = "censo-argentino-qgis"
-version = "0.3.1"
-description = "Plugin de QGIS para cargar datos del censo argentino desde Source.Coop"
-authors = [
-    {name = "Nissim Lebovits", email = "nlebovits@pm.me"}
-]
-readme = "README.md"
-requires-python = ">=3.9"
-license = "Apache-2.0"
-
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-py-modules = []  # This is a QGIS plugin, not a Python package
-
-[project.optional-dependencies]
-test = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "duckdb>=0.9.0",
-]
-dev = [
-    "ruff>=0.9.0",
-    "pre-commit>=3.0.0",
-]
+# Configuración para el plugin censo-argentino-qgis de QGIS
+# Este NO es un paquete Python - es un plugin QGIS que se instala copiándolo al directorio de plugins
+# Las dependencias se manejan vía requirements.txt y requirements-dev.txt
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -71,16 +46,16 @@ ignore = [
 "__init__.py" = ["F401"]  # Allow unused imports in __init__.py
 "tests/*.py" = ["B011"]   # Allow assert False in tests
 
-# This is a QGIS plugin, not a Python package
-# Documentation is built with MkDocs as a uv tool:
+# Este es un plugin de QGIS, no un paquete Python
+# La documentación se construye con MkDocs como herramienta uv:
 #   uv tool install mkdocs --with mkdocs-material --with pymdown-extensions
-#   uv tool run mkdocs serve  # Dev server at http://127.0.0.1:8000
-#   uv tool run mkdocs build  # Build to site/ directory
+#   uv tool run mkdocs serve  # Servidor de desarrollo en http://127.0.0.1:8000
+#   uv tool run mkdocs build  # Construir en el directorio site/
 # Tests:
-#   uv pip install -e ".[test]"
-#   uv run pytest
-# Development:
-#   uv pip install -e ".[dev]"
+#   pip install -r requirements-dev.txt  (o: uv pip install -r requirements-dev.txt)
+#   pytest
+# Desarrollo:
+#   pip install -r requirements-dev.txt  (o: uv pip install -r requirements-dev.txt)
 #   pre-commit install
 #   ruff format .
 #   ruff check --fix .

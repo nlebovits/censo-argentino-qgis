@@ -1,0 +1,4 @@
+# Dependencias de ejecución para el plugin censo-argentino-qgis
+# Este plugin NO es un paquete Python - se instala copiándolo al directorio de plugins de QGIS
+
+duckdb>=0.9.0

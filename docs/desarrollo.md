@@ -48,7 +48,7 @@ censo-argentino-qgis/
 
 - Python 3.9+
 - QGIS 3.0+
-- uv (gestor de paquetes)
+- pip o uv (gestor de paquetes)
 
 ### Instalación para Desarrollo
 
@@ -56,6 +56,13 @@ censo-argentino-qgis/
 # Clonar repositorio
 git clone https://github.com/nlebovits/censo-argentino-qgis.git
 cd censo-argentino-qgis
+
+# Instalar dependencias de desarrollo
+# Opción 1: Usar uv (más rápido)
+uv pip install -r requirements-dev.txt
+
+# Opción 2: Usar pip (estándar)
+pip install -r requirements-dev.txt
 
 # Enlazar al directorio de plugins QGIS
 # Linux
@@ -67,6 +74,8 @@ ln -s $(pwd) ~/Library/Application\ Support/QGIS/QGIS3/profiles/default/python/p
 # Instalar DuckDB en Python de QGIS
 pip3 install duckdb --target ~/.local/share/QGIS/QGIS3/profiles/default/python/
 ```
+
+**Nota:** Este plugin NO es un paquete Python estándar. Se instala copiándolo al directorio de plugins de QGIS. Las dependencias están en `requirements.txt` y `requirements-dev.txt`, no en `pyproject.toml`.
 
 ### Modificar el Plugin
 
@@ -82,18 +91,19 @@ pip3 install duckdb --target ~/.local/share/QGIS/QGIS3/profiles/default/python/
 ### Ejecutar Tests
 
 ```bash
-# Instalar dependencias de test
-uv pip install -e ".[test]"
+# Instalar dependencias (si no lo has hecho)
+pip install -r requirements-dev.txt
+# o con uv: uv pip install -r requirements-dev.txt
 
 # Ejecutar todos los tests
-uv run pytest
+pytest
 
 # Ejecutar con cobertura
-uv run pytest --cov
+pytest --cov
 
 # Ejecutar tests específicos
-uv run pytest tests/test_cache.py
-uv run pytest tests/test_validation.py -v
+pytest tests/test_cache.py
+pytest tests/test_validation.py -v
 
 # Ver reporte de cobertura HTML
 open htmlcov/index.html
@@ -298,13 +308,14 @@ cat metadata.txt
 
 ```bash
 # Reinstalar dependencias
-uv pip install -e ".[test]" --force-reinstall
+pip install -r requirements-dev.txt --force-reinstall
+# o con uv: uv pip install -r requirements-dev.txt --force-reinstall
 
 # Limpiar caché de pytest
 rm -rf .pytest_cache
 
 # Ejecutar con verbose
-uv run pytest -vv
+pytest -vv
 ```
 
 ### DuckDB no funciona

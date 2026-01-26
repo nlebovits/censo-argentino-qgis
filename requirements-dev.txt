@@ -1,0 +1,14 @@
+# Dependencias de desarrollo para el plugin censo-argentino-qgis
+
+# Incluye dependencias de ejecución
+-r requirements.txt
+
+# Testing
+pytest>=7.0
+pytest-cov>=4.0
+
+# Linting y formateo
+ruff>=0.9.0
+
+# Pre-commit hooks
+pre-commit>=3.0.0
