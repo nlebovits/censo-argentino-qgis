@@ -1,0 +1,54 @@
+site_name: Censo Argentino
+site_description: Plugin de QGIS para explorar datos del censo argentino desde Source.Coop
+site_author: Nissim Lebovits
+site_url: https://nlebovits.github.io/censo-argentino-qgis/
+repo_name: nlebovits/censo-argentino-qgis
+repo_url: https://github.com/nlebovits/censo-argentino-qgis
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: es
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Cambiar a modo oscuro
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Cambiar a modo claro
+  features:
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Inicio: index.md
+  - Instalación: instalacion.md
+  - Inicio Rápido: inicio-rapido.md
+  - Guía de Usuario: guia-usuario.md
+  - Modo SQL: sql.md
+  - Ejemplos: examples/basico.md
+  - Solución de Problemas: solucion-problemas.md
+  - Contribuir: contribuir.md
+  - Changelog: CHANGELOG.md
