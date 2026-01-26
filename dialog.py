@@ -1,12 +1,32 @@
 import os
 from qgis.PyQt import uic, QtWidgets
-from qgis.PyQt.QtCore import QCoreApplication, Qt
+from qgis.PyQt.QtCore import QCoreApplication, Qt, QThread, pyqtSignal
 from qgis.core import QgsProject, QgsMessageLog, Qgis
 from qgis.utils import iface
 from .query import get_entity_types, get_variables, get_geographic_codes, load_census_layer
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'dialog.ui'))
+
+
+class DataLoaderThread(QThread):
+    """Thread for loading data asynchronously"""
+    finished = pyqtSignal(object, str)  # (result, data_type)
+    error = pyqtSignal(str, str)  # (error_message, data_type)
+
+    def __init__(self, load_func, data_type, *args, **kwargs):
+        super().__init__()
+        self.load_func = load_func
+        self.data_type = data_type
+        self.args = args
+        self.kwargs = kwargs
+
+    def run(self):
+        try:
+            result = self.load_func(*self.args, **self.kwargs)
+            self.finished.emit(result, self.data_type)
+        except Exception as e:
+            self.error.emit(str(e), self.data_type)
 
 
 class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
@@ -16,6 +36,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
 
         self.variables = {}  # Store mapping of variable codes to labels
         self.entity_types = []  # Store entity types
+        self.loader_threads = []  # Track active threads
 
         # Initialize UI
         self.progressBar.hide()
@@ -31,9 +52,8 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.searchVariables.textChanged.connect(self.on_search_changed)
         self.btnLoad.clicked.connect(self.on_load_clicked)
 
-        # Load initial data
-        self.on_geo_level_changed()  # Load geographic filters first
-        self.on_year_changed()
+        # Load initial data asynchronously
+        self.load_data_async()
 
     def init_year_combo(self):
         """Initialize year dropdown (hardcoded to 2022 for now)"""
@@ -62,85 +82,107 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.lblStatus.setText(message)
         QCoreApplication.processEvents()
 
+    def load_data_async(self):
+        """Load initial data (geo codes and variables) in background threads"""
+        # Show loading state
+        self.lblDescription.setText("Loading data...")
+
+        # Load geographic codes in background
+        geo_level = self.comboGeoLevel.currentData()
+        if geo_level:
+            geo_thread = DataLoaderThread(get_geographic_codes, "geo_codes", geo_level=geo_level)
+            geo_thread.finished.connect(self.on_geo_codes_loaded)
+            geo_thread.error.connect(self.on_data_load_error)
+            self.loader_threads.append(geo_thread)
+            geo_thread.start()
+
+        # Load variables in background
+        entity_type = self.comboEntityType.currentData()
+        if entity_type:
+            var_thread = DataLoaderThread(get_variables, "variables", entity_type=entity_type)
+            var_thread.finished.connect(self.on_variables_loaded)
+            var_thread.error.connect(self.on_data_load_error)
+            self.loader_threads.append(var_thread)
+            var_thread.start()
+
+    def on_geo_codes_loaded(self, geo_codes, data_type):
+        """Handle geographic codes loaded in background"""
+        self.listGeoFilter.clear()
+        for code, label in geo_codes:
+            item = QtWidgets.QListWidgetItem(label)
+            item.setData(Qt.UserRole, code)
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+            item.setCheckState(Qt.Unchecked)
+            self.listGeoFilter.addItem(item)
+        self.check_loading_complete()
+
+    def on_variables_loaded(self, variables, data_type):
+        """Handle variables loaded in background"""
+        self.listVariables.clear()
+        self.variables = {}
+        for code, label in variables:
+            item = QtWidgets.QListWidgetItem(f"{code} - {label}")
+            item.setData(Qt.UserRole, code)
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+            item.setCheckState(Qt.Unchecked)
+            self.listVariables.addItem(item)
+            self.variables[code] = label
+        self.check_loading_complete()
+
+    def on_data_load_error(self, error_message, data_type):
+        """Handle errors during background data loading"""
+        QgsMessageLog.logMessage(
+            f"Error loading {data_type}: {error_message}",
+            "Censo Argentino",
+            Qgis.Warning
+        )
+        self.check_loading_complete()
+
+    def check_loading_complete(self):
+        """Check if all loading threads are complete"""
+        all_complete = all(not thread.isRunning() for thread in self.loader_threads)
+        if all_complete:
+            self.lblDescription.setText("")
+            # Clean up finished threads
+            self.loader_threads = [t for t in self.loader_threads if t.isRunning()]
+
     def on_year_changed(self):
         """Load entity types and variables when year changes"""
         self.on_entity_type_changed()
 
     def on_geo_level_changed(self):
-        """Load geographic codes when level changes"""
+        """Load geographic codes when level changes (async)"""
         self.listGeoFilter.clear()
         geo_level = self.comboGeoLevel.currentData()
 
         if not geo_level:
             return
 
-        self.progressBar.show()
-        self.lblStatus.show()
-        self.progressBar.setValue(0)
+        self.lblDescription.setText("Loading geographic codes...")
 
-        try:
-            geo_codes = get_geographic_codes(
-                geo_level=geo_level,
-                progress_callback=self.update_progress
-            )
-
-            for code, label in geo_codes:
-                item = QtWidgets.QListWidgetItem(label)
-                item.setData(Qt.UserRole, code)
-                item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-                item.setCheckState(Qt.Unchecked)
-                self.listGeoFilter.addItem(item)
-
-            self.progressBar.hide()
-            self.lblStatus.hide()
-
-        except Exception as e:
-            self.progressBar.hide()
-            self.lblStatus.hide()
-            QgsMessageLog.logMessage(
-                f"Error loading geographic codes: {str(e)}",
-                "Censo Argentino",
-                Qgis.Warning
-            )
+        # Load in background thread
+        geo_thread = DataLoaderThread(get_geographic_codes, "geo_codes", geo_level=geo_level)
+        geo_thread.finished.connect(self.on_geo_codes_loaded)
+        geo_thread.error.connect(self.on_data_load_error)
+        self.loader_threads.append(geo_thread)
+        geo_thread.start()
 
     def on_entity_type_changed(self):
-        """Load variables when entity type changes"""
+        """Load variables when entity type changes (async)"""
         self.listVariables.clear()
         self.lblDescription.setText("Loading variables...")
-        self.progressBar.show()
-        self.lblStatus.show()
-        self.progressBar.setValue(0)
 
         entity_type = self.comboEntityType.currentData()
 
-        try:
-            variables = get_variables(
-                entity_type=entity_type,
-                progress_callback=self.update_progress
-            )
-            self.variables = {}
+        if not entity_type:
+            return
 
-            for code, label in variables:
-                item = QtWidgets.QListWidgetItem(f"{code} - {label}")
-                item.setData(Qt.UserRole, code)
-                item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-                item.setCheckState(Qt.Unchecked)
-                self.listVariables.addItem(item)
-                self.variables[code] = label
-
-            self.lblDescription.setText("")
-            self.progressBar.hide()
-            self.lblStatus.hide()
-
-        except Exception as e:
-            self.lblDescription.setText(f"Error loading variables: {str(e)}")
-            self.progressBar.hide()
-            self.lblStatus.hide()
-            QgsMessageLog.logMessage(
-                f"Error loading variables: {str(e)}",
-                "Censo Argentino",
-                Qgis.Critical
-            )
+        # Load in background thread
+        var_thread = DataLoaderThread(get_variables, "variables", entity_type=entity_type)
+        var_thread.finished.connect(self.on_variables_loaded)
+        var_thread.error.connect(self.on_data_load_error)
+        self.loader_threads.append(var_thread)
+        var_thread.start()
 
     def on_search_changed(self):
         """Filter variables list based on search text"""

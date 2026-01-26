@@ -229,15 +229,15 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
                 where_clause += f" AND g.COD_2022 IN ({placeholders})"
                 query_params.extend(geo_filters)
 
-        # Add bounding box filter if provided
+        # Build spatial filter subquery if bbox provided
+        # Apply spatial filter to geometry table BEFORE joining with census data
+        # This ensures we get geometries even if census data doesn't exist for those variables
+        spatial_filter = ""
         if bbox:
             xmin, ymin, xmax, ymax = bbox
-            # Use ST_Intersects to find any geometries that touch or overlap the bounding box
-            # This ensures we get features even if they're only partially within the extent
-            where_clause += " AND ST_Intersects(g.geometry, ST_GeomFromText(?))"
             # Create a polygon from the bbox coordinates in WKT format
             bbox_wkt = f"POLYGON(({xmin} {ymin}, {xmax} {ymin}, {xmax} {ymax}, {xmin} {ymax}, {xmin} {ymin}))"
-            query_params.append(bbox_wkt)
+            spatial_filter = f" AND ST_Intersects(g.geometry, ST_GeomFromText('{bbox_wkt}'))"
 
         # Build pivot aggregation for each variable
         pivot_columns = []
@@ -251,12 +251,16 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
 
         if config["dissolve"]:
             # Aggregate geometries and sum data for each variable
+            # Use subquery to filter geometries first, then join with census data
             query = f"""
                 SELECT
                     {config['id_field']} as geo_id,
                     ST_AsText(ST_Union_Agg(g.geometry)) as wkt,
                     {pivot_sql}
-                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet' g
+                FROM (
+                    SELECT * FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet'
+                    WHERE 1=1 {spatial_filter}
+                ) g
                 JOIN 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
                     ON g.COD_2022 = c.id_geo
                 WHERE {where_clause}
@@ -269,7 +273,10 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
                     {config['id_field']} as geo_id,
                     ST_AsText(g.geometry) as wkt,
                     {pivot_sql}
-                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet' g
+                FROM (
+                    SELECT * FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet'
+                    WHERE 1=1 {spatial_filter}
+                ) g
                 JOIN 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
                     ON g.COD_2022 = c.id_geo
                 WHERE {where_clause}
