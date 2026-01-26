@@ -1,8 +1,8 @@
 import os
 from qgis.PyQt import uic, QtWidgets
-from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.core import QgsProject, QgsMessageLog, Qgis
-from .query import get_entity_types, get_variables, load_census_layer
+from .query import get_entity_types, get_variables, get_geographic_codes, load_census_layer
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'dialog.ui'))
@@ -30,6 +30,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.btnLoad.clicked.connect(self.on_load_clicked)
 
         # Load initial data
+        self.on_geo_level_changed()  # Load geographic filters first
         self.on_year_changed()
 
     def init_year_combo(self):
@@ -64,8 +65,39 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.on_entity_type_changed()
 
     def on_geo_level_changed(self):
-        """Called when geographic level changes - for future use"""
-        pass
+        """Load geographic codes when level changes"""
+        self.listGeoFilter.clear()
+        geo_level = self.comboGeoLevel.currentData()
+
+        if not geo_level:
+            return
+
+        self.progressBar.show()
+        self.lblStatus.show()
+        self.progressBar.setValue(0)
+
+        try:
+            geo_codes = get_geographic_codes(
+                geo_level=geo_level,
+                progress_callback=self.update_progress
+            )
+
+            for code, label in geo_codes:
+                item = QtWidgets.QListWidgetItem(label)
+                item.setData(Qt.UserRole, code)
+                self.listGeoFilter.addItem(item)
+
+            self.progressBar.hide()
+            self.lblStatus.hide()
+
+        except Exception as e:
+            self.progressBar.hide()
+            self.lblStatus.hide()
+            QgsMessageLog.logMessage(
+                f"Error loading geographic codes: {str(e)}",
+                "Censo Argentino",
+                Qgis.Warning
+            )
 
     def on_entity_type_changed(self):
         """Load variables when entity type changes"""
@@ -86,7 +118,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
 
             for code, label in variables:
                 item = QtWidgets.QListWidgetItem(f"{code} - {label}")
-                item.setData(QtWidgets.Qt.UserRole, code)
+                item.setData(Qt.UserRole, code)
                 self.listVariables.addItem(item)
                 self.variables[code] = label
 
@@ -108,7 +140,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         """Update description when variables are selected"""
         selected_items = self.listVariables.selectedItems()
         if len(selected_items) == 1:
-            code = selected_items[0].data(QtWidgets.Qt.UserRole)
+            code = selected_items[0].data(Qt.UserRole)
             if code in self.variables:
                 self.lblDescription.setText(self.variables[code])
         elif len(selected_items) > 1:
@@ -125,7 +157,11 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             return
 
         geo_level = self.comboGeoLevel.currentData()
-        variable_codes = [item.data(QtWidgets.Qt.UserRole) for item in selected_items]
+        variable_codes = [item.data(Qt.UserRole) for item in selected_items]
+
+        # Get selected geographic filters (optional)
+        geo_filter_items = self.listGeoFilter.selectedItems()
+        geo_filters = [item.data(Qt.UserRole) for item in geo_filter_items] if geo_filter_items else None
 
         self.lblDescription.setText("")
         self.progressBar.show()
@@ -149,6 +185,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                     layer = load_census_layer(
                         var_code,
                         geo_level=geo_level,
+                        geo_filters=geo_filters,
                         progress_callback=progress_wrapper
                     )
 
