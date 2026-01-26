@@ -49,5 +49,6 @@ nav:
   - Guía de Usuario: guia-usuario.md
   - Modo SQL: sql.md
   - Solución de Problemas: solucion-problemas.md
+  - Desarrollo: desarrollo.md
   - Contribuir: contribuir.md
   - Changelog: CHANGELOG.md

@@ -9,37 +9,32 @@ Plugin de QGIS para cargar datos del [Censo Nacional 2022](https://source.coop/n
 
 ## 📚 Documentación
 
-**[Documentación completa](https://nlebovits.github.io/censo-argentino-qgis/)** - Instalación, guías, ejemplos SQL y solución de problemas
+**[Documentación completa](https://nlebovits.github.io/censo-argentino-qgis/)**
 
-## Instalación Rápida
+- [Instalación](https://nlebovits.github.io/censo-argentino-qgis/instalacion/)
+- [Inicio Rápido](https://nlebovits.github.io/censo-argentino-qgis/inicio-rapido/)
+- [Modo SQL](https://nlebovits.github.io/censo-argentino-qgis/sql/)
+- [Desarrollo](https://nlebovits.github.io/censo-argentino-qgis/desarrollo/)
+- [Contribuir](https://nlebovits.github.io/censo-argentino-qgis/contribuir/)
 
-Consulte la [guía de instalación completa](https://nlebovits.github.io/censo-argentino-qgis/instalacion/) para instrucciones detalladas.
+## Instalación
 
-## Desarrollo
+Disponible en el repositorio oficial de plugins de QGIS. En QGIS, ir a **Complementos > Administrar e instalar complementos** y buscar "Censo Argentino".
 
-### Documentación
+## Desarrollo y Contribución
 
-```bash
-# Instalar MkDocs como herramienta uv
-uv tool install mkdocs --with mkdocs-material --with pymdown-extensions
+Ver la [guía de desarrollo](https://nlebovits.github.io/censo-argentino-qgis/desarrollo/) para:
+- Arquitectura del plugin
+- Configuración de entorno de desarrollo
+- Ejecución de tests
+- Proceso de release
 
-# Servidor de desarrollo
-uv tool run mkdocs serve
-
-# Construir sitio
-uv tool run mkdocs build
-```
-
-Consulte [DOCS.md](DOCS.md) para más detalles.
+¡Las contribuciones son bienvenidas! Ver la [guía de contribución](https://nlebovits.github.io/censo-argentino-qgis/contribuir/).
 
 ## Licencia
 
-Apache 2.0 - Consulte [LICENSE](LICENSE) para más detalles.
+Apache 2.0 - Ver [LICENSE](LICENSE) para más detalles.
 
 ## Autor
 
 Nissim Lebovits - [nlebovits@pm.me](mailto:nlebovits@pm.me)
-
-## Contribuir
-
-¡Las contribuciones son bienvenidas! Consulte la [guía de contribución](https://nlebovits.github.io/censo-argentino-qgis/contribuir/) para comenzar.
