@@ -419,6 +419,10 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
             Qgis.Info
         )
 
+        # Pass query to callback for Query Log tab
+        if progress_callback:
+            progress_callback(25, f"QUERY_TEXT:{query}")
+
         if progress_callback:
             progress_callback(30, "Executing query...")
 
@@ -440,6 +444,10 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
                 "Censo Argentino",
                 Qgis.Warning
             )
+            # Create a dummy layer just to store the query for logging
+            error_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "Error - No Data", "memory")
+            error_layer.setCustomProperty("censo_query", query)
+            error_layer.setCustomProperty("censo_error", error_msg)
             raise Exception(error_msg)
 
         if progress_callback:

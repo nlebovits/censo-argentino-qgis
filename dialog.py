@@ -98,6 +98,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.entity_types = []  # Store entity types
         self.loader_threads = []  # Track active threads
         self.last_query = ""  # Store last executed query for copying
+        self.last_browse_query = ""  # Store last Browse tab query for error logging
 
         # Initialize UI
         self.progressBar.hide()
@@ -150,6 +151,11 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def update_progress(self, percent, message):
         """Update progress bar and status"""
+        # Capture query text if message starts with QUERY_TEXT:
+        if message.startswith("QUERY_TEXT:"):
+            self.last_browse_query = message[len("QUERY_TEXT:"):]
+            return  # Don't show this as a status message
+
         self.progressBar.setValue(percent)
         self.lblStatus.setText(message)
         QCoreApplication.processEvents()
@@ -397,6 +403,12 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                 "Censo Argentino",
                 Qgis.Critical
             )
+            # Log the query to Query Log tab even on error
+            if self.last_browse_query:
+                self.log_query(self.last_browse_query, f"Browse (ERROR: {str(e)})")
+            else:
+                log_msg = f"-- ERROR: {str(e)}\n-- Query was not captured. Check QGIS Log Messages panel for details.\n\n"
+                self.txtQueryLog.appendPlainText(log_msg)
 
         finally:
             self.progressBar.hide()
