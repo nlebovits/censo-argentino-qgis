@@ -1,6 +1,6 @@
 [project]
 name = "censo-argentino-qgis"
-version = "0.1.0"
+version = "0.3.0"
 description = "Plugin de QGIS para cargar datos del censo argentino desde Source.Coop"
 authors = [
     {name = "Nissim Lebovits", email = "nlebovits@pm.me"}
