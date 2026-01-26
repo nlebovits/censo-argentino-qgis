@@ -7,7 +7,14 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.9"
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = []  # This is a QGIS plugin, not a Python package
 
 [project.optional-dependencies]
 test = [
