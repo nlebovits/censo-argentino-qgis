@@ -49,7 +49,7 @@ jobs:
 
       - name: Create plugin ZIP
         run: |
-          PLUGIN_NAME="censo-argentino-qgis"
+          PLUGIN_NAME="censo_argentino_qgis"
           ZIP_NAME="${PLUGIN_NAME}-${{ steps.version.outputs.version }}.zip"
 
           # Create temporary directory with plugin structure
@@ -80,7 +80,7 @@ jobs:
           name: Release ${{ steps.version.outputs.version }}
           body: ${{ steps.changelog.outputs.notes }}
           files: |
-            censo-argentino-qgis-${{ steps.version.outputs.version }}.zip
+            censo_argentino_qgis-${{ steps.version.outputs.version }}.zip
           draft: false
           prerelease: false
         env:
@@ -92,7 +92,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Tag:** ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Artifact:** censo-argentino-qgis-${{ steps.version.outputs.version }}.zip" >> $GITHUB_STEP_SUMMARY
+          echo "**Artifact:** censo_argentino_qgis-${{ steps.version.outputs.version }}.zip" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
           echo "1. Verify release at: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
