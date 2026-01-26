@@ -75,7 +75,7 @@ jobs:
           ls -lh $GITHUB_WORKSPACE/$ZIP_NAME
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: Release ${{ steps.version.outputs.version }}
           body: ${{ steps.changelog.outputs.notes }}
