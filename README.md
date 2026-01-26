@@ -5,6 +5,8 @@ Plugin de QGIS para cargar datos del [Censo Nacional 2022](https://source.coop/n
 [![Documentation](https://img.shields.io/badge/docs-mkdocs-blue)](https://nlebovits.github.io/censo-argentino-qgis/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
+![](docs/imgs/ejemplo.png)
+
 ## 📚 Documentación
 
 **[Documentación completa](https://nlebovits.github.io/censo-argentino-qgis/)** - Instalación, guías, ejemplos SQL y solución de problemas
