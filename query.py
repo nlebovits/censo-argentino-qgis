@@ -513,7 +513,116 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
             Qgis.Info
         )
 
+        # Store query as custom property for Query Log tab
+        layer.setCustomProperty("censo_query", query)
+
         return layer
 
     except Exception as e:
         raise Exception(f"Error loading census layer: {str(e)}")
+
+
+def run_custom_query(sql, progress_callback=None):
+    """Run arbitrary SQL against census data, return QgsVectorLayer or DataFrame
+
+    Available tables:
+        radios    → geometry + COD_2022, PROV, DEPTO, FRACC, RADIO
+        census    → id_geo, codigo_variable, conteo, valor_provincia, etc.
+        metadata  → codigo_variable, etiqueta_variable, entidad
+
+    Returns:
+        (result, error) where result is QgsVectorLayer, DataFrame, or None
+    """
+    try:
+        if progress_callback:
+            progress_callback(10, "Connecting to data source...")
+
+        con = duckdb.connect()
+        con.execute("INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;")
+
+        if progress_callback:
+            progress_callback(20, "Creating table views...")
+
+        con.execute("""
+            CREATE VIEW radios AS SELECT * FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet';
+            CREATE VIEW census AS SELECT * FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet';
+            CREATE VIEW metadata AS SELECT * FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/metadata.parquet';
+        """)
+
+        if progress_callback:
+            progress_callback(30, "Running query...")
+
+        df = con.execute(sql).df()
+        con.close()
+
+        if df.empty:
+            return None, "Query returned no results"
+
+        if progress_callback:
+            progress_callback(50, "Processing results...")
+
+        # Check if result has geometry (wkt column)
+        if 'wkt' in df.columns:
+            layer = _df_to_layer(df, progress_callback)
+            return layer, None
+        else:
+            return df, None
+
+    except Exception as e:
+        return None, str(e)
+
+
+def _df_to_layer(df, progress_callback=None):
+    """Convert DataFrame with wkt column to QgsVectorLayer"""
+    from qgis.core import QgsMessageLog, Qgis
+
+    layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "SQL Query Result", "memory")
+    provider = layer.dataProvider()
+
+    # Build fields from non-geometry columns
+    fields = []
+    for col in df.columns:
+        if col == 'wkt':
+            continue
+        if df[col].dtype in ['int64', 'int32']:
+            fields.append(QgsField(col, QVariant.LongLong))
+        elif df[col].dtype in ['float64', 'float32']:
+            fields.append(QgsField(col, QVariant.Double))
+        else:
+            fields.append(QgsField(col, QVariant.String))
+
+    provider.addAttributes(fields)
+    layer.updateFields()
+
+    if progress_callback:
+        progress_callback(60, f"Adding {len(df)} features...")
+
+    features = []
+    non_wkt_cols = [c for c in df.columns if c != 'wkt']
+
+    for idx, row in df.iterrows():
+        feature = QgsFeature()
+        geom = QgsGeometry.fromWkt(row['wkt'])
+        if not geom.isNull():
+            feature.setGeometry(geom)
+            feature.setAttributes([row[c] for c in non_wkt_cols])
+            features.append(feature)
+
+        # Update progress
+        if progress_callback and idx % 50 == 0:
+            percent = 60 + int((idx / len(df)) * 35)
+            progress_callback(percent, f"Processing features: {idx + 1}/{len(df)}")
+
+    provider.addFeatures(features)
+    layer.updateExtents()
+
+    if progress_callback:
+        progress_callback(100, "Done")
+
+    QgsMessageLog.logMessage(
+        f"SQL query created layer with {len(features)} features",
+        "Censo Argentino",
+        Qgis.Info
+    )
+
+    return layer

@@ -1,12 +1,72 @@
 import os
+from datetime import datetime
 from qgis.PyQt import uic, QtWidgets
 from qgis.PyQt.QtCore import QCoreApplication, Qt, QThread, pyqtSignal
-from qgis.core import QgsProject, QgsMessageLog, Qgis
+from qgis.PyQt.QtGui import QFont
+from qgis.core import QgsProject, QgsMessageLog, Qgis, QgsVectorLayer
 from qgis.utils import iface
-from .query import get_entity_types, get_variables, get_geographic_codes, load_census_layer
+from .query import get_entity_types, get_variables, get_geographic_codes, load_census_layer, run_custom_query
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'dialog.ui'))
+
+
+EXAMPLE_QUERIES = {
+    "-- Select an example --": "",
+
+    "Total population by tract": """SELECT
+    g.COD_2022 as geo_id,
+    ST_AsText(g.geometry) as wkt,
+    c.conteo as total_pop
+FROM radios g
+JOIN census c ON g.COD_2022 = c.id_geo
+WHERE c.codigo_variable = 'POB_TOT_P'""",
+
+    "Compare two variables (ratio template)": """-- Replace VAR_A and VAR_B with actual variable codes
+SELECT
+    g.COD_2022 as geo_id,
+    ST_AsText(g.geometry) as wkt,
+    (a.conteo::float / NULLIF(b.conteo, 0)) * 100 as ratio
+FROM radios g
+JOIN census a ON g.COD_2022 = a.id_geo AND a.codigo_variable = 'VAR_A'
+JOIN census b ON g.COD_2022 = b.id_geo AND b.codigo_variable = 'VAR_B'""",
+
+    "Aggregate to department": """SELECT
+    c.valor_provincia || '-' || c.valor_departamento as geo_id,
+    ST_AsText(ST_Union_Agg(g.geometry)) as wkt,
+    SUM(c.conteo) as total
+FROM radios g
+JOIN census c ON g.COD_2022 = c.id_geo
+WHERE c.codigo_variable = 'POB_TOT_P'
+GROUP BY c.valor_provincia, c.valor_departamento""",
+
+    "Filter by province": """SELECT
+    g.COD_2022 as geo_id,
+    ST_AsText(g.geometry) as wkt,
+    c.conteo
+FROM radios g
+JOIN census c ON g.COD_2022 = c.id_geo
+WHERE c.codigo_variable = 'POB_TOT_P'
+  AND c.etiqueta_provincia = 'Buenos Aires'""",
+
+    "List available variables": """SELECT DISTINCT
+    entidad,
+    codigo_variable,
+    etiqueta_variable
+FROM metadata
+ORDER BY entidad, codigo_variable""",
+
+    "Category breakdown for a variable": """-- Shows all categories within a variable
+SELECT
+    codigo_variable,
+    valor_categoria,
+    etiqueta_categoria,
+    SUM(conteo) as total
+FROM census
+WHERE codigo_variable = 'POB_TOT_P'
+GROUP BY codigo_variable, valor_categoria, etiqueta_categoria
+ORDER BY valor_categoria""",
+}
 
 
 class DataLoaderThread(QThread):
@@ -37,11 +97,13 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.variables = {}  # Store mapping of variable codes to labels
         self.entity_types = []  # Store entity types
         self.loader_threads = []  # Track active threads
+        self.last_query = ""  # Store last executed query for copying
 
         # Initialize UI
         self.progressBar.hide()
         self.lblStatus.hide()
 
+        # Initialize Browse tab
         self.init_year_combo()
         self.init_geo_level_combo()
         self.init_entity_type_combo()
@@ -51,6 +113,16 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.listVariables.itemChanged.connect(self.on_variable_changed)
         self.searchVariables.textChanged.connect(self.on_search_changed)
         self.btnLoad.clicked.connect(self.on_load_clicked)
+
+        # Initialize SQL tab
+        self.init_sql_tab()
+        self.comboExamples.currentIndexChanged.connect(self.on_example_selected)
+        self.btnRunSql.clicked.connect(self.on_run_sql_clicked)
+
+        # Initialize Query Log tab
+        self.init_query_log_tab()
+        self.btnCopyQuery.clicked.connect(self.on_copy_query_clicked)
+        self.btnClearLog.clicked.connect(self.on_clear_log_clicked)
 
         # Load initial data asynchronously
         self.load_data_async()
@@ -295,6 +367,12 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
 
             if layer.isValid():
                 QgsProject.instance().addMapLayer(layer)
+
+                # Log the query to Query Log tab
+                query_text = layer.customProperty("censo_query", "")
+                if query_text:
+                    self.log_query(query_text, "Browse")
+
                 if len(variable_codes) == 1:
                     self.lblDescription.setText(f"Successfully loaded layer with 1 variable!")
                 else:
@@ -324,3 +402,112 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             self.progressBar.hide()
             self.lblStatus.hide()
             self.btnLoad.setEnabled(True)
+
+    def log_query(self, query, source="Browse"):
+        """Log query to the Query Log tab"""
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"-- {source} Query at {timestamp}\n{query}\n\n"
+        self.txtQueryLog.appendPlainText(log_entry)
+        self.last_query = query
+
+    def init_sql_tab(self):
+        """Initialize SQL tab UI"""
+        self.progressBarSql.hide()
+        self.lblSqlStatus.setText("")
+
+        # Set monospace font
+        font = QFont("Consolas, Monaco, Courier New, monospace", 10)
+        self.txtSql.setFont(font)
+
+        # Populate examples dropdown
+        self.comboExamples.clear()
+        for name in EXAMPLE_QUERIES.keys():
+            self.comboExamples.addItem(name)
+
+        # Set placeholder text
+        self.txtSql.setPlaceholderText(
+            "-- Enter SQL query here\n"
+            "-- Tables: radios, census, metadata\n"
+            "-- Include 'ST_AsText(g.geometry) as wkt' to load as layer"
+        )
+
+    def init_query_log_tab(self):
+        """Initialize Query Log tab"""
+        font = QFont("Consolas, Monaco, Courier New, monospace", 9)
+        self.txtQueryLog.setFont(font)
+        self.txtQueryLog.setPlainText("-- Query log will appear here\n-- Queries from both Browse and SQL tabs\n\n")
+
+    def on_example_selected(self):
+        """Load selected example into SQL editor"""
+        example_name = self.comboExamples.currentText()
+        if example_name in EXAMPLE_QUERIES and EXAMPLE_QUERIES[example_name]:
+            self.txtSql.setPlainText(EXAMPLE_QUERIES[example_name])
+
+    def update_sql_progress(self, percent, message):
+        """Update SQL tab progress"""
+        self.progressBarSql.setValue(percent)
+        self.lblSqlStatus.setText(message)
+        QCoreApplication.processEvents()
+
+    def on_run_sql_clicked(self):
+        """Execute SQL query"""
+        sql = self.txtSql.toPlainText().strip()
+
+        if not sql:
+            self.lblSqlStatus.setText("Please enter a SQL query")
+            return
+
+        # Log the query
+        self.log_query(sql, "SQL")
+
+        self.progressBarSql.show()
+        self.lblSqlStatus.show()
+        self.btnRunSql.setEnabled(False)
+
+        try:
+            result, error = run_custom_query(sql, self.update_sql_progress)
+
+            if error:
+                self.lblSqlStatus.setText(f"Error: {error}")
+                QgsMessageLog.logMessage(f"SQL error: {error}", "Censo Argentino", Qgis.Warning)
+            elif result is None:
+                self.lblSqlStatus.setText("Query returned no results")
+            elif isinstance(result, QgsVectorLayer):
+                if result.isValid():
+                    QgsProject.instance().addMapLayer(result)
+                    self.lblSqlStatus.setText(f"Layer added: {result.featureCount()} features")
+                else:
+                    self.lblSqlStatus.setText("Error: Invalid layer created")
+            else:
+                # DataFrame result (no geometry)
+                row_count = len(result)
+                col_names = ', '.join(result.columns[:5])
+                if len(result.columns) > 5:
+                    col_names += '...'
+                self.lblSqlStatus.setText(f"Query returned {row_count} rows. Columns: {col_names}")
+                QgsMessageLog.logMessage(
+                    f"SQL query result ({row_count} rows):\n{result.to_string(max_rows=20)}",
+                    "Censo Argentino",
+                    Qgis.Info
+                )
+
+        except Exception as e:
+            self.lblSqlStatus.setText(f"Error: {str(e)}")
+            QgsMessageLog.logMessage(f"SQL execution error: {str(e)}", "Censo Argentino", Qgis.Critical)
+
+        finally:
+            self.progressBarSql.hide()
+            self.btnRunSql.setEnabled(True)
+
+    def on_copy_query_clicked(self):
+        """Copy last query to clipboard"""
+        if self.last_query:
+            clipboard = QtWidgets.QApplication.clipboard()
+            clipboard.setText(self.last_query)
+            QgsMessageLog.logMessage("Query copied to clipboard", "Censo Argentino", Qgis.Info)
+        else:
+            QgsMessageLog.logMessage("No query to copy", "Censo Argentino", Qgis.Warning)
+
+    def on_clear_log_clicked(self):
+        """Clear the query log"""
+        self.txtQueryLog.setPlainText("-- Query log cleared\n\n")

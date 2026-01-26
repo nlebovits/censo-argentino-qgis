@@ -68,6 +68,79 @@ The census data will be loaded as a single polygon layer with all selected varia
 
 Metadata (variables and geographic codes) is automatically cached in `~/.cache/qgis-censo-argentino/` after the first load. This makes subsequent dialog opens nearly instant. The cache is safe to delete - it will be rebuilt on next use.
 
+## SQL Query Mode
+
+For advanced users, the plugin provides direct SQL access to the census data via DuckDB.
+
+### Available Tables
+
+| Table | Description |
+|-------|-------------|
+| `radios` | Census tract geometries (COD_2022, PROV, DEPTO, FRACC, RADIO, geometry) |
+| `census` | Census data in long format (id_geo, codigo_variable, conteo, valor_provincia, etiqueta_provincia, etc.) |
+| `metadata` | Variable definitions (codigo_variable, etiqueta_variable, entidad) |
+
+### Creating Map Layers from SQL
+
+To load query results as a map layer, your query must include geometry as WKT with the column name `wkt`:
+
+```sql
+SELECT
+    g.COD_2022 as geo_id,
+    ST_AsText(g.geometry) as wkt,  -- Required for map layer
+    c.conteo as population
+FROM radios g
+JOIN census c ON g.COD_2022 = c.id_geo
+WHERE c.codigo_variable = 'POB_TOT_P'
+```
+
+Queries without a `wkt` column will return results to the QGIS log panel (View → Panels → Log Messages → "Censo Argentino").
+
+### Example: Calculate a Ratio
+
+```sql
+-- Percentage of variable A relative to variable B
+SELECT
+    g.COD_2022 as geo_id,
+    ST_AsText(g.geometry) as wkt,
+    (a.conteo::float / NULLIF(b.conteo, 0)) * 100 as percentage
+FROM radios g
+JOIN census a ON g.COD_2022 = a.id_geo AND a.codigo_variable = 'VAR_A'
+JOIN census b ON g.COD_2022 = b.id_geo AND b.codigo_variable = 'VAR_B'
+```
+
+### Example: Aggregate to Department Level
+
+```sql
+SELECT
+    c.valor_provincia || '-' || c.valor_departamento as geo_id,
+    ST_AsText(ST_Union_Agg(g.geometry)) as wkt,
+    SUM(c.conteo) as total
+FROM radios g
+JOIN census c ON g.COD_2022 = c.id_geo
+WHERE c.codigo_variable = 'POB_TOT_P'
+GROUP BY c.valor_provincia, c.valor_departamento
+```
+
+### Finding Variable Codes
+
+Use the "List available variables" example query or run:
+
+```sql
+SELECT DISTINCT entidad, codigo_variable, etiqueta_variable
+FROM metadata
+ORDER BY entidad, codigo_variable
+```
+
+### Query Log Tab
+
+All queries (from Browse tab and SQL tab) are automatically logged to the Query Log tab. You can:
+- View the generated SQL from Browse tab selections
+- Copy queries to clipboard for reuse or debugging
+- Clear the log at any time
+
+This is invaluable for learning DuckDB SQL syntax and debugging filter issues.
+
 ## Features
 
 - **Direct access** to Source.Coop hosted census data
@@ -81,6 +154,8 @@ Metadata (variables and geographic codes) is automatically cached in `~/.cache/q
 - **Variable search** - Quick search through hundreds of census variables
 - **Async loading** - Background data loading keeps UI responsive
 - **Automatic geometry aggregation** for higher geographic levels
+- **SQL Query Mode** - Direct DuckDB SQL access for advanced queries, ratios, and custom aggregations
+- **Query Log** - View and copy generated SQL from both Browse and SQL tabs for learning and debugging
 
 ## Requirements
 
