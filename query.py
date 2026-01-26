@@ -232,8 +232,12 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
         # Add bounding box filter if provided
         if bbox:
             xmin, ymin, xmax, ymax = bbox
-            where_clause += " AND ST_Intersects(g.geometry, ST_MakeEnvelope(?, ?, ?, ?))"
-            query_params.extend([xmin, ymin, xmax, ymax])
+            # Use ST_Intersects to find any geometries that touch or overlap the bounding box
+            # This ensures we get features even if they're only partially within the extent
+            where_clause += " AND ST_Intersects(g.geometry, ST_GeomFromText(?))"
+            # Create a polygon from the bbox coordinates in WKT format
+            bbox_wkt = f"POLYGON(({xmin} {ymin}, {xmax} {ymin}, {xmax} {ymax}, {xmin} {ymax}, {xmin} {ymin}))"
+            query_params.append(bbox_wkt)
 
         # Build pivot aggregation for each variable
         pivot_columns = []
@@ -275,11 +279,28 @@ def load_census_layer(variable_codes, geo_level="RADIO", geo_filters=None, bbox=
         if progress_callback:
             progress_callback(30, "Streaming query results...")
 
+        # Log the query for debugging
+        from qgis.core import QgsMessageLog, Qgis
+        QgsMessageLog.logMessage(
+            f"Query params: {query_params}",
+            "Censo Argentino",
+            Qgis.Info
+        )
+        if bbox:
+            QgsMessageLog.logMessage(
+                f"Using bbox filter: {bbox}",
+                "Censo Argentino",
+                Qgis.Info
+            )
+
         df = con.execute(query, query_params).df()
         con.close()
 
         if df.empty:
-            raise Exception("No data returned for selected variable")
+            error_msg = "No data returned for selected filters."
+            if bbox:
+                error_msg += f" Try zooming out or disabling viewport filtering. Bbox used: {bbox}"
+            raise Exception(error_msg)
 
         if progress_callback:
             progress_callback(50, "Creating layer...")

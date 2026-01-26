@@ -202,8 +202,15 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             try:
                 canvas = iface.mapCanvas()
                 extent = canvas.extent()
-                # Convert to WGS84 (EPSG:4326) if needed
                 crs = canvas.mapSettings().destinationCrs()
+
+                QgsMessageLog.logMessage(
+                    f"Original extent in {crs.authid()}: {extent.xMinimum()}, {extent.yMinimum()}, {extent.xMaximum()}, {extent.yMaximum()}",
+                    "Censo Argentino",
+                    Qgis.Info
+                )
+
+                # Always transform to WGS84 (EPSG:4326) for querying
                 if crs.authid() != 'EPSG:4326':
                     from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
                     transform = QgsCoordinateTransform(
@@ -213,6 +220,12 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                     )
                     extent = transform.transformBoundingBox(extent)
 
+                    QgsMessageLog.logMessage(
+                        f"Transformed extent to EPSG:4326: {extent.xMinimum()}, {extent.yMinimum()}, {extent.xMaximum()}, {extent.yMaximum()}",
+                        "Censo Argentino",
+                        Qgis.Info
+                    )
+
                 bbox = (extent.xMinimum(), extent.yMinimum(), extent.xMaximum(), extent.yMaximum())
             except Exception as e:
                 QgsMessageLog.logMessage(
@@ -220,6 +233,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                     "Censo Argentino",
                     Qgis.Warning
                 )
+                bbox = None
 
         self.lblDescription.setText("")
         self.progressBar.show()
