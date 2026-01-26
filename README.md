@@ -3,7 +3,7 @@
 Plugin de QGIS para cargar datos del censo argentino desde Source.Coop. Consulta archivos parquet mediante DuckDB y carga resultados como capas vectoriales directamente en QGIS.
 
 [![Documentation](https://img.shields.io/badge/docs-mkdocs-blue)](https://nlebovits.github.io/censo-argentino-qgis/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ## Características
 
@@ -81,7 +81,7 @@ Consulte [DOCS.md](DOCS.md) para más detalles.
 
 ## Licencia
 
-MIT - Consulte [LICENSE](LICENSE) para más detalles.
+Apache 2.0 - Consulte [LICENSE](LICENSE) para más detalles.
 
 ## Autor
 

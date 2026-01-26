@@ -7,7 +7,7 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.9"
-license = {text = "MIT"}
+license = {text = "Apache-2.0"}
 
 # This is a QGIS plugin, not a Python package
 # Documentation is built with MkDocs as a uv tool:
