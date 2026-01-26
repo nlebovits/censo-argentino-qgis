@@ -53,7 +53,7 @@ jobs:
           ZIP_NAME="${PLUGIN_NAME}-${{ steps.version.outputs.version }}.zip"
 
           # Create temporary directory with plugin structure
-          mkdir -p /tmp/$PLUGIN_NAME
+          mkdir -p /tmp/$PLUGIN_NAME/docs/imgs
 
           # Copy plugin files (exclude dev/test files)
           cp *.py /tmp/$PLUGIN_NAME/
@@ -62,6 +62,9 @@ jobs:
           cp metadata.txt /tmp/$PLUGIN_NAME/
           cp LICENSE /tmp/$PLUGIN_NAME/
           cp README.md /tmp/$PLUGIN_NAME/
+
+          # Copy preview image for QGIS plugin repository
+          cp docs/imgs/ejemplo.png /tmp/$PLUGIN_NAME/docs/imgs/
 
           # Create ZIP
           cd /tmp
