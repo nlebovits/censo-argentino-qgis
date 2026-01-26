@@ -19,7 +19,17 @@ Plugin de QGIS para cargar datos del [Censo Nacional 2022](https://source.coop/n
 
 ## Instalación
 
-Disponible en el repositorio oficial de plugins de QGIS. En QGIS, ir a **Complementos > Administrar e instalar complementos** y buscar "Censo Argentino".
+**Instalación desde archivo ZIP:**
+
+1. Descargar el archivo ZIP: [censo-argentino-qgis-0.3.1.zip](https://github.com/nlebovits/censo-argentino-qgis/releases/download/v0.3.1/censo-argentino-qgis-0.3.1.zip)
+2. Abrir QGIS
+3. Ir a **Complementos → Administrar e instalar complementos**
+4. Hacer clic en la pestaña **Instalar desde ZIP**
+5. Seleccionar el archivo ZIP descargado
+6. Hacer clic en **Instalar complemento**
+7. Reiniciar QGIS
+
+El plugin estará disponible en el repositorio oficial de QGIS próximamente.
 
 ## Desarrollo y Contribución
 
