@@ -1,5 +1,6 @@
 import os
 from qgis.PyQt import uic, QtWidgets
+from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import QgsProject, QgsMessageLog, Qgis
 from .query import get_variables, load_census_layer
 
@@ -15,6 +16,9 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.variables = {}  # Store mapping of variable codes to labels
 
         # Initialize UI
+        self.progressBar.hide()
+        self.lblStatus.hide()
+
         self.init_year_combo()
         self.comboYear.currentIndexChanged.connect(self.on_year_changed)
         self.comboVariable.currentIndexChanged.connect(self.on_variable_changed)
@@ -28,13 +32,22 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.comboYear.clear()
         self.comboYear.addItem("2022", "2022")
 
+    def update_progress(self, percent, message):
+        """Update progress bar and status"""
+        self.progressBar.setValue(percent)
+        self.lblStatus.setText(message)
+        QCoreApplication.processEvents()
+
     def on_year_changed(self):
         """Load variables when year changes"""
         self.comboVariable.clear()
         self.lblDescription.setText("Loading variables...")
+        self.progressBar.show()
+        self.lblStatus.show()
+        self.progressBar.setValue(0)
 
         try:
-            variables = get_variables()
+            variables = get_variables(progress_callback=self.update_progress)
             self.variables = {}
 
             for code, label in variables:
@@ -42,12 +55,16 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                 self.variables[code] = label
 
             self.lblDescription.setText("")
+            self.progressBar.hide()
+            self.lblStatus.hide()
 
             if self.comboVariable.count() > 0:
                 self.on_variable_changed()
 
         except Exception as e:
             self.lblDescription.setText(f"Error loading variables: {str(e)}")
+            self.progressBar.hide()
+            self.lblStatus.hide()
             QgsMessageLog.logMessage(
                 f"Error loading variables: {str(e)}",
                 "Censo Argentino",
@@ -70,11 +87,14 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             self.lblDescription.setText("Please select a variable")
             return
 
-        self.lblDescription.setText("Loading layer...")
+        self.lblDescription.setText("")
+        self.progressBar.show()
+        self.lblStatus.show()
+        self.progressBar.setValue(0)
         self.btnLoad.setEnabled(False)
 
         try:
-            layer = load_census_layer(current_code)
+            layer = load_census_layer(current_code, progress_callback=self.update_progress)
 
             if layer.isValid():
                 QgsProject.instance().addMapLayer(layer)
@@ -101,4 +121,6 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             )
 
         finally:
+            self.progressBar.hide()
+            self.lblStatus.hide()
             self.btnLoad.setEnabled(True)
