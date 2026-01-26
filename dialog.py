@@ -2,7 +2,7 @@ import os
 from qgis.PyQt import uic, QtWidgets
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import QgsProject, QgsMessageLog, Qgis
-from .query import get_variables, load_census_layer
+from .query import get_entity_types, get_variables, load_census_layer
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'dialog.ui'))
@@ -14,13 +14,16 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.setupUi(self)
 
         self.variables = {}  # Store mapping of variable codes to labels
+        self.entity_types = []  # Store entity types
 
         # Initialize UI
         self.progressBar.hide()
         self.lblStatus.hide()
 
         self.init_year_combo()
+        self.init_entity_type_combo()
         self.comboYear.currentIndexChanged.connect(self.on_year_changed)
+        self.comboEntityType.currentIndexChanged.connect(self.on_entity_type_changed)
         self.comboVariable.currentIndexChanged.connect(self.on_variable_changed)
         self.btnLoad.clicked.connect(self.on_load_clicked)
 
@@ -32,6 +35,14 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.comboYear.clear()
         self.comboYear.addItem("2022", "2022")
 
+    def init_entity_type_combo(self):
+        """Initialize entity type dropdown with friendly labels"""
+        self.comboEntityType.clear()
+        # Add entity types with readable labels
+        self.comboEntityType.addItem("Household (Hogar)", "HOGAR")
+        self.comboEntityType.addItem("Person (Persona)", "PERSONA")
+        self.comboEntityType.addItem("Dwelling (Vivienda)", "VIVIENDA")
+
     def update_progress(self, percent, message):
         """Update progress bar and status"""
         self.progressBar.setValue(percent)
@@ -39,15 +50,24 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         QCoreApplication.processEvents()
 
     def on_year_changed(self):
-        """Load variables when year changes"""
+        """Load entity types and variables when year changes"""
+        self.on_entity_type_changed()
+
+    def on_entity_type_changed(self):
+        """Load variables when entity type changes"""
         self.comboVariable.clear()
         self.lblDescription.setText("Loading variables...")
         self.progressBar.show()
         self.lblStatus.show()
         self.progressBar.setValue(0)
 
+        entity_type = self.comboEntityType.currentData()
+
         try:
-            variables = get_variables(progress_callback=self.update_progress)
+            variables = get_variables(
+                entity_type=entity_type,
+                progress_callback=self.update_progress
+            )
             self.variables = {}
 
             for code, label in variables:

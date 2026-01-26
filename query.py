@@ -3,8 +3,38 @@ from qgis.core import QgsVectorLayer, QgsFeature, QgsGeometry, QgsField, QgsFiel
 from qgis.PyQt.QtCore import QVariant
 
 
-def get_variables(progress_callback=None):
-    """Query metadata.parquet and return list of (codigo_variable, etiqueta_variable)"""
+def get_entity_types(progress_callback=None):
+    """Query metadata.parquet and return list of available entity types"""
+    try:
+        if progress_callback:
+            progress_callback(10, "Connecting to data source...")
+
+        con = duckdb.connect()
+        con.execute("INSTALL httpfs; LOAD httpfs;")
+
+        if progress_callback:
+            progress_callback(50, "Loading entity types...")
+
+        query = """
+            SELECT DISTINCT entidad
+            FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/metadata.parquet'
+            WHERE entidad IN ('HOGAR', 'PERSONA', 'VIVIENDA')
+            ORDER BY entidad
+        """
+
+        result = con.execute(query).fetchall()
+        con.close()
+
+        if progress_callback:
+            progress_callback(100, "Entity types loaded")
+
+        return [row[0] for row in result]
+    except Exception as e:
+        raise Exception(f"Error loading entity types: {str(e)}")
+
+
+def get_variables(entity_type=None, progress_callback=None):
+    """Query metadata.parquet and return list of (codigo_variable, etiqueta_variable) for entity type"""
     try:
         if progress_callback:
             progress_callback(10, "Connecting to data source...")
@@ -15,13 +45,22 @@ def get_variables(progress_callback=None):
         if progress_callback:
             progress_callback(30, "Loading variable metadata...")
 
-        query = """
-            SELECT codigo_variable, etiqueta_variable
-            FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/metadata.parquet'
-            ORDER BY codigo_variable
-        """
+        if entity_type:
+            query = """
+                SELECT DISTINCT codigo_variable, etiqueta_variable
+                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/metadata.parquet'
+                WHERE entidad = ?
+                ORDER BY codigo_variable
+            """
+            result = con.execute(query, [entity_type]).fetchall()
+        else:
+            query = """
+                SELECT DISTINCT codigo_variable, etiqueta_variable
+                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/metadata.parquet'
+                ORDER BY codigo_variable
+            """
+            result = con.execute(query).fetchall()
 
-        result = con.execute(query).fetchall()
         con.close()
 
         if progress_callback:
@@ -45,15 +84,15 @@ def load_census_layer(variable_code, progress_callback=None):
             progress_callback(15, "Querying census data...")
 
         query = """
-            SELECT g.cod_2022, ST_AsText(g.geometry) as wkt, c.conteo
+            SELECT g.COD_2022, ST_AsText(g.geometry) as wkt, c.conteo
             FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet' g
             JOIN 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
-                ON g.cod_2022 = c.id_geo
+                ON g.COD_2022 = c.id_geo
             WHERE c.codigo_variable = ?
         """
 
         if progress_callback:
-            progress_callback(30, "Downloading data...")
+            progress_callback(30, "Streaming query results...")
 
         df = con.execute(query, [variable_code]).df()
         con.close()
@@ -70,7 +109,7 @@ def load_census_layer(variable_code, progress_callback=None):
 
         # Add fields
         provider.addAttributes([
-            QgsField("cod_2022", QVariant.String),
+            QgsField("COD_2022", QVariant.String),
             QgsField("conteo", QVariant.Double)
         ])
         layer.updateFields()
@@ -88,10 +127,10 @@ def load_census_layer(variable_code, progress_callback=None):
             geom = QgsGeometry.fromWkt(row['wkt'])
 
             if geom.isNull():
-                raise Exception(f"Invalid geometry for feature {row['cod_2022']}")
+                raise Exception(f"Invalid geometry for feature {row['COD_2022']}")
 
             feature.setGeometry(geom)
-            feature.setAttributes([row['cod_2022'], float(row['conteo'])])
+            feature.setAttributes([row['COD_2022'], float(row['conteo'])])
             features.append(feature)
 
             # Update progress every 100 features
