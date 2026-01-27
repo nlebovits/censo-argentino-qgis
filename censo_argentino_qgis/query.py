@@ -457,6 +457,43 @@ def get_variables(entity_type=None, progress_callback=None):
         raise Exception(f"Error cargando variables: {str(e)}")
 
 
+def calculate_column_count(variable_codes, selected_categories=None):
+    """Calcular el número total de columnas que se generarán.
+
+    Args:
+        variable_codes: Lista de códigos de variables
+        selected_categories: Dict opcional mapeando var_code a lista de categorías seleccionadas
+
+    Returns:
+        int: Número total de columnas que se generarán
+    """
+    if isinstance(variable_codes, str):
+        variable_codes = [variable_codes]
+
+    metadata_map = preload_all_metadata()
+    total_columns = 0
+
+    for var_code in variable_codes:
+        cat_data = metadata_map.get(var_code, {"categories": [], "has_nulls": False})
+        categories = cat_data["categories"]
+        has_nulls = cat_data["has_nulls"]
+
+        # Filter categories if selected_categories provided
+        if selected_categories and var_code in selected_categories:
+            selected = selected_categories[var_code]
+            if selected:  # Only filter if non-empty list provided
+                categories = [c for c in categories if c[0] in selected]
+
+        if not categories and not has_nulls:
+            total_columns += 1  # Total-only variable
+        else:
+            total_columns += (
+                len(categories) + (1 if has_nulls else 0) + 1
+            )  # Categories + NULL? + total
+
+    return total_columns
+
+
 def load_census_layer(
     variable_codes,
     geo_level="RADIO",
@@ -481,7 +518,7 @@ def load_census_layer(
         QgsVectorLayer con geometría y columnas de categorías expandidas
 
     Raises:
-        Exception: Si el conteo de columnas excede 100 o si la consulta falla
+        Exception: Si la consulta falla
     """
     # Allow single variable as string
     if isinstance(variable_codes, str):
@@ -554,21 +591,14 @@ def load_census_layer(
                 # Regular categories + optional NULL column + total column
                 total_columns += len(categories) + (1 if has_nulls else 0) + 1
 
-        # Validate column limits (Design Decision #4)
+        # Log column count for monitoring
         from qgis.core import Qgis, QgsMessageLog
 
-        if total_columns >= 100:
-            raise Exception(
-                f"Demasiadas columnas ({total_columns}). Límite: 100. "
-                f"Seleccione menos variables o variables con menos categorías."
-            )
-        elif total_columns >= 50:
-            QgsMessageLog.logMessage(
-                f"ADVERTENCIA: Alto conteo de columnas ({total_columns}). "
-                f"Esto puede afectar el rendimiento de QGIS.",
-                "Censo Argentino",
-                Qgis.Warning,
-            )
+        QgsMessageLog.logMessage(
+            f"Cargando {total_columns} columnas",
+            "Censo Argentino",
+            Qgis.Info,
+        )
 
         if progress_callback:
             progress_callback(

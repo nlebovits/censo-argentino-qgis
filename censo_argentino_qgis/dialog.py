@@ -8,6 +8,7 @@ from qgis.PyQt.QtGui import QFont
 from qgis.utils import iface
 
 from .query import (
+    calculate_column_count,
     get_geographic_codes,
     get_variable_categories,
     get_variables,
@@ -515,6 +516,25 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.btnLoad.setEnabled(False)
 
         try:
+            # Check column count and warn if > 100
+            column_count = calculate_column_count(variable_codes, selected_categories)
+            if column_count > 100:
+                reply = QtWidgets.QMessageBox.question(
+                    self,
+                    "Muchas columnas",
+                    f"Está a punto de cargar {column_count} columnas de datos.\n\n"
+                    f"Esto puede causar que QGIS se vuelva lento o no responda.\n\n"
+                    f"¿Está seguro de que desea continuar?",
+                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                    QtWidgets.QMessageBox.No,
+                )
+                if reply == QtWidgets.QMessageBox.No:
+                    self.lblDescription.setText("Carga cancelada")
+                    self.progressBar.hide()
+                    self.lblStatus.hide()
+                    self.btnLoad.setEnabled(True)
+                    return
+
             # Load single layer with all variables (filtered by selected categories)
             layer = load_census_layer(
                 variable_codes,
