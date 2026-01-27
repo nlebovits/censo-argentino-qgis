@@ -70,11 +70,15 @@ jobs:
           fi
 
       - name: Publicar en QGIS Plugin Repository y GitHub Release
+        env:
+          OSGEO_USERNAME: ${{ secrets.OSGEO_USER }}
+          OSGEO_PASSWORD: ${{ secrets.OSGEO_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           qgis-plugin-ci release ${{ steps.version.outputs.version }} \
-            --github-token ${{ secrets.GITHUB_TOKEN }} \
-            --osgeo-username ${{ secrets.OSGEO_USER }} \
-            --osgeo-password ${{ secrets.OSGEO_PASSWORD }}
+            --github-token "$GITHUB_TOKEN" \
+            --osgeo-username "$OSGEO_USERNAME" \
+            --osgeo-password "$OSGEO_PASSWORD"
 
       - name: Resumen del Release
         run: |
