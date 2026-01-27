@@ -14,6 +14,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install qgis-plugin-ci
+        run: pip3 install qgis-plugin-ci
+
       - name: Extract version from tag
         id: version
         run: |
@@ -25,76 +33,27 @@ jobs:
         run: |
           METADATA_VERSION=$(grep '^version=' metadata.txt | cut -d'=' -f2)
           if [ "$METADATA_VERSION" != "${{ steps.version.outputs.version }}" ]; then
-            echo "Error: Version mismatch!"
-            echo "  Tag version: ${{ steps.version.outputs.version }}"
-            echo "  metadata.txt version: $METADATA_VERSION"
+            echo "Error: ¡Versiones no coinciden!"
+            echo "  Versión del tag: ${{ steps.version.outputs.version }}"
+            echo "  Versión en metadata.txt: $METADATA_VERSION"
             exit 1
           fi
-          echo "✓ Version matches: $METADATA_VERSION"
+          echo "✓ Versión coincide: $METADATA_VERSION"
 
-      - name: Extract changelog for this version
-        id: changelog
+      - name: Deploy to QGIS Plugin Repository and GitHub Release
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          # Extract section between [VERSION] and next [VERSION] or EOF
-          NOTES=$(sed -n "/## \[$VERSION\]/,/## \[/p" docs/CHANGELOG.md | sed '$d' | tail -n +2)
-
-          # Save to file for multiline handling
-          echo "$NOTES" > /tmp/release_notes.txt
-
-          # Set output using file
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          cat /tmp/release_notes.txt >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Create plugin ZIP
-        run: |
-          PLUGIN_NAME="censo_argentino_qgis"
-          ZIP_NAME="${PLUGIN_NAME}-${{ steps.version.outputs.version }}.zip"
-
-          # Create temporary directory with plugin structure
-          mkdir -p /tmp/$PLUGIN_NAME/docs/imgs
-
-          # Copy plugin files (exclude dev/test files)
-          cp *.py /tmp/$PLUGIN_NAME/
-          cp *.ui /tmp/$PLUGIN_NAME/ 2>/dev/null || true
-          cp *.png /tmp/$PLUGIN_NAME/ 2>/dev/null || true
-          cp metadata.txt /tmp/$PLUGIN_NAME/
-          cp LICENSE /tmp/$PLUGIN_NAME/
-          cp README.md /tmp/$PLUGIN_NAME/
-
-          # Copy preview image for QGIS plugin repository
-          cp docs/imgs/ejemplo.png /tmp/$PLUGIN_NAME/docs/imgs/
-
-          # Create ZIP
-          cd /tmp
-          zip -r $ZIP_NAME $PLUGIN_NAME
-          mv $ZIP_NAME $GITHUB_WORKSPACE/
-
-          echo "Created: $ZIP_NAME"
-          ls -lh $GITHUB_WORKSPACE/$ZIP_NAME
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Release ${{ steps.version.outputs.version }}
-          body: ${{ steps.changelog.outputs.notes }}
-          files: |
-            censo_argentino_qgis-${{ steps.version.outputs.version }}.zip
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          qgis-plugin-ci release ${{ steps.version.outputs.version }} \
+            --github-token ${{ secrets.GITHUB_TOKEN }} \
+            --osgeo-username ${{ secrets.OSGEO_USER }} \
+            --osgeo-password ${{ secrets.OSGEO_PASSWORD }}
 
       - name: Release Summary
         run: |
-          echo "## Release Created ✓" >> $GITHUB_STEP_SUMMARY
+          echo "## Release Publicado ✓" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Versión:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Tag:** ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Artifact:** censo_argentino_qgis-${{ steps.version.outputs.version }}.zip" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
-          echo "1. Verify release at: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "2. Download and test the plugin ZIP" >> $GITHUB_STEP_SUMMARY
-          echo "3. Submit to QGIS Plugin Repository (if ready)" >> $GITHUB_STEP_SUMMARY
+          echo "### Publicado en:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✓ GitHub Release: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✓ Repositorio oficial de QGIS: https://plugins.qgis.org/plugins/censo_argentino_qgis/" >> $GITHUB_STEP_SUMMARY
