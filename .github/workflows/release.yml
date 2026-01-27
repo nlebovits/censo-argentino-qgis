@@ -76,6 +76,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           qgis-plugin-ci release ${{ steps.version.outputs.version }} \
+            --release-tag ${{ steps.version.outputs.tag }} \
             --github-token "$GITHUB_TOKEN" \
             --osgeo-username "$OSGEO_USERNAME" \
             --osgeo-password "$OSGEO_PASSWORD"
