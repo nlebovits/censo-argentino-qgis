@@ -81,27 +81,19 @@ jobs:
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Crear GitHub Release
-        uses: ncipollo/create-release@v1
-        with:
-          tag: ${{ steps.version.outputs.tag }}
-          name: Release ${{ steps.version.outputs.version }}
-          body: ${{ steps.changelog.outputs.changelog }}
-          draft: false
-          prerelease: false
-
       - name: Empaquetar plugin con qgis-plugin-ci
         run: |
           qgis-plugin-ci package ${{ steps.version.outputs.version }}
 
-      - name: Subir ZIP a GitHub Release
-        uses: ncipollo/create-release@v1
+      - name: Crear GitHub Release y subir ZIP
+        uses: softprops/action-gh-release@v2
         with:
-          tag: ${{ steps.version.outputs.tag }}
-          allowUpdates: true
-          artifacts: "*.zip"
-          omitBodyDuringUpdate: true
-          omitNameDuringUpdate: true
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.version }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          files: "*.zip"
+          draft: false
+          prerelease: false
 
       - name: Publicar en plugins.qgis.org
         env:
