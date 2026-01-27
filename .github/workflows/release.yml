@@ -69,17 +69,16 @@ jobs:
             echo "✓ OSGEO_PASSWORD está configurado"
           fi
 
-      - name: Publicar en QGIS Plugin Repository y GitHub Release
-        env:
-          OSGEO_USERNAME: ${{ secrets.OSGEO_USER }}
-          OSGEO_PASSWORD: ${{ secrets.OSGEO_PASSWORD }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Crear ZIP del plugin
         run: |
-          qgis-plugin-ci release ${{ steps.version.outputs.version }} \
-            --release-tag ${{ steps.version.outputs.tag }} \
-            --github-token "$GITHUB_TOKEN" \
-            --osgeo-username "$OSGEO_USERNAME" \
-            --osgeo-password "$OSGEO_PASSWORD"
+          qgis-plugin-ci package ${{ steps.version.outputs.version }}
+          ls -lh *.zip
+
+      - name: Subir ZIP a GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ steps.version.outputs.tag }} censo_argentino_qgis.${{ steps.version.outputs.version }}.zip --clobber
 
       - name: Resumen del Release
         run: |

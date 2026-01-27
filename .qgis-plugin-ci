@@ -41,7 +41,7 @@ exclude:
   - ".ruff.toml"
 
 # Crear GitHub release
-create_release: true
+create_release: false
 
 # Publicar en repositorio oficial de QGIS
-publish: true
+publish: false
