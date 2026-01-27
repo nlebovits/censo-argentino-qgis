@@ -35,13 +35,7 @@ Si necesitas instalar una versión específica, puedes descargar el archivo ZIP 
 
 ## Demo
 
-<video src="docs/imgs/ejemplo.mp4"
-       autoplay
-       loop
-       muted
-       playsinline
-       width="800">
-</video>
+![Demo del plugin](docs/imgs/ejemplo.gif)
 
 ## Desarrollo y Contribución
 
