@@ -1,43 +1,41 @@
-[qgis-plugin-ci]
-# Configuración para qgis-plugin-ci
+# Configuración para qgis-plugin-ci (YAML)
 # Más info: https://opengisch.github.io/qgis-plugin-ci/
 
-# Nombre del plugin (debe coincidir con el nombre del directorio)
-plugin_name = censo_argentino_qgis
+plugin_name: censo_argentino_qgis
 
 # Archivos a incluir en el ZIP del plugin
-include =
-    *.py
-    *.ui
-    *.png
-    metadata.txt
-    LICENSE
-    README.md
-    docs/imgs/ejemplo.png
+include:
+  - "*.py"
+  - "*.ui"
+  - "*.png"
+  - "metadata.txt"
+  - "LICENSE"
+  - "README.md"
+  - "docs/imgs/ejemplo.png"
 
 # Archivos a excluir
-exclude =
-    tests/*
-    .git/*
-    .github/*
-    __pycache__/*
-    *.pyc
-    .pytest_cache/*
-    htmlcov/*
-    .coverage
-    .venv/*
-    requirements-dev.txt
-    pyproject.toml
-    scripts/*
-    plans/*
-    docs/*.md
-    mkdocs.yml
+exclude:
+  - "tests/*"
+  - ".git/*"
+  - ".github/*"
+  - "__pycache__/*"
+  - "*.pyc"
+  - ".pytest_cache/*"
+  - "htmlcov/*"
+  - ".coverage"
+  - ".venv/*"
+  - "requirements-dev.txt"
+  - "pyproject.toml"
+  - "scripts/*"
+  - "plans/*"
+  - "docs/*.md"
+  - "mkdocs.yml"
 
 # Archivo de changelog (para extraer notas de release)
-changelog_path = docs/CHANGELOG.md
+changelog_path: docs/CHANGELOG.md
 
 # Crear GitHub release
-create_release = True
+create_release: true
 
 # Publicar en repositorio oficial de QGIS
-publish = True
+publish: true
