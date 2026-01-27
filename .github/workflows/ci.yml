@@ -1,10 +1,11 @@
-name: CI
+name: Integración Continua
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   lint:
@@ -12,19 +13,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Python
+      - name: Configurar Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Instalar dependencias
         run: |
           pip install -r requirements-dev.txt
 
-      - name: Check code formatting
+      - name: Verificar formato del código
         run: ruff format --check .
 
-      - name: Run linter
+      - name: Ejecutar linter
         run: ruff check .
 
   test:
@@ -37,23 +38,23 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Configurar Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: Instalar dependencias
         run: |
           pip install -r requirements-dev.txt
 
-      - name: Pre-install DuckDB extensions
+      - name: Pre-instalar extensiones de DuckDB
         run: |
           python -c "import duckdb; con = duckdb.connect(); con.execute('INSTALL spatial'); con.execute('INSTALL httpfs')"
 
-      - name: Run tests with pytest
+      - name: Ejecutar tests con pytest
         run: pytest -v --tb=short --cov=. --cov-report=term-missing --cov-report=xml
 
-      - name: Upload coverage to Codecov
+      - name: Subir cobertura a Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
         uses: codecov/codecov-action@v5
         with:

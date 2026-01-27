@@ -1,4 +1,4 @@
-name: Deploy Documentation
+name: Publicar Documentación
 
 on:
   push:
@@ -24,22 +24,22 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Python
+      - name: Configurar Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
-      - name: Install uv
+      - name: Instalar uv
         uses: astral-sh/setup-uv@v7
 
-      - name: Install dependencies
+      - name: Instalar dependencias
         run: |
           uv pip install --system mkdocs mkdocs-material pymdown-extensions
 
-      - name: Build documentation
+      - name: Construir documentación
         run: mkdocs build
 
-      - name: Upload artifact
+      - name: Subir artefacto
         uses: actions/upload-pages-artifact@v4
         with:
           path: ./site
@@ -52,6 +52,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Publicar en GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
