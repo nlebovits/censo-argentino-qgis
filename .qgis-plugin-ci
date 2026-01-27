@@ -5,6 +5,7 @@ plugin_path: .
 github_organization_slug: nlebovits
 project_slug: censo-argentino-qgis
 archive_name: censo_argentino_qgis.{version}.zip
+changelog_path: docs/CHANGELOG.md
 
 # Archivos a incluir en el ZIP del plugin
 include:
