@@ -14,8 +14,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from query import get_variable_categories, preload_all_metadata
-from query_builders import build_geo_filter, build_pivot_columns, build_spatial_filter
+from censo_argentino_qgis.query import get_variable_categories, preload_all_metadata
+from censo_argentino_qgis.query_builders import (
+    build_geo_filter,
+    build_pivot_columns,
+    build_spatial_filter,
+)
 
 
 class TestCategoryFetching:

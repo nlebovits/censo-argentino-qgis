@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from validation import validate_sql_placeholders
+from censo_argentino_qgis.validation import validate_sql_placeholders
 
 
 class TestValidateSqlPlaceholders:

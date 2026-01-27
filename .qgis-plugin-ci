@@ -1,21 +1,10 @@
 # Configuración para qgis-plugin-ci (YAML)
 # Más info: https://opengisch.github.io/qgis-plugin-ci/
 
-plugin_path: .
+plugin_path: censo_argentino_qgis
 github_organization_slug: nlebovits
 project_slug: censo-argentino-qgis
-archive_name: censo_argentino_qgis.{version}.zip
 changelog_path: docs/CHANGELOG.md
-
-# Archivos a incluir en el ZIP del plugin
-include:
-  - "*.py"
-  - "*.ui"
-  - "*.png"
-  - "metadata.txt"
-  - "LICENSE"
-  - "README.md"
-  - "docs/imgs/ejemplo.png"
 
 # Archivos a excluir (importante: reducir tamaño del ZIP)
 exclude:
