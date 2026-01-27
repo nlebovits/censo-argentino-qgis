@@ -5,15 +5,7 @@ Plugin de QGIS para cargar datos del [Censo Nacional 2022](https://source.coop/n
 [![Documentation](https://img.shields.io/badge/docs-mkdocs-blue)](https://nlebovits.github.io/censo-argentino-qgis/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-## Demo
-
-<video src="docs/imgs/ejemplo.mp4"
-       autoplay
-       loop
-       muted
-       playsinline
-       width="800">
-</video>
+![](docs/imgs/ejemplo.png)
 
 ## 📚 Documentación
 
@@ -40,6 +32,16 @@ Plugin de QGIS para cargar datos del [Censo Nacional 2022](https://source.coop/n
 Si necesitas instalar una versión específica, puedes descargar el archivo ZIP desde [Releases](https://github.com/nlebovits/censo-argentino-qgis/releases) e instalar desde la pestaña **Instalar desde ZIP** en el administrador de complementos.
 
 **Nota sobre dependencias:** El plugin requiere el paquete Python `duckdb`. Si encuentras errores, consulta la [Guía de Solución de Problemas](https://nlebovits.github.io/censo-argentino-qgis/solucion-problemas/#error-modulo-duckdb-no-encontrado) para instrucciones de instalación.
+
+## Demo
+
+<video src="docs/imgs/ejemplo.mp4"
+       autoplay
+       loop
+       muted
+       playsinline
+       width="800">
+</video>
 
 ## Desarrollo y Contribución
 
