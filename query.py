@@ -293,25 +293,24 @@ def preload_all_metadata(progress_callback=None):
             ORDER BY codigo_variable, valor_categoria
         """
 
-        df = con.execute(query).df()
+        result = con.execute(query).fetchall()
 
-        # Build category map
+        # Build category map from raw results
         metadata_map = {}
-        for var_code in df["codigo_variable"].unique():
-            var_df = df[df["codigo_variable"] == var_code]
 
-            # Get non-NULL categories
-            non_null_df = var_df[var_df["valor_categoria"].notna()]
-            # IMPORTANT: Store as tuples, not lists (for consistency with cache format)
-            categories = [
-                (str(row["valor_categoria"]), str(row["etiqueta_categoria"]))
-                for _, row in non_null_df.iterrows()
-            ]
+        # Group results by variable code
+        for row in result:
+            var_code = row[0]
+            valor_cat = row[1]
+            etiqueta_cat = row[2]
 
-            # Check for NULL categories
-            has_nulls = var_df["valor_categoria"].isna().any()
+            if var_code not in metadata_map:
+                metadata_map[var_code] = {"categories": [], "has_nulls": False}
 
-            metadata_map[var_code] = {"categories": categories, "has_nulls": has_nulls}
+            if valor_cat is not None:
+                metadata_map[var_code]["categories"].append((str(valor_cat), str(etiqueta_cat)))
+            else:
+                metadata_map[var_code]["has_nulls"] = True
 
         # Cache the entire map
         save_cached_data(cache_key, metadata_map)
@@ -736,14 +735,14 @@ def load_census_layer(
         if progress_callback:
             progress_callback(30, "Ejecutando consulta...")
 
-        df = con.execute(query, query_params).df()
+        result = con.execute(query, query_params).fetchall()
 
         if progress_callback:
-            progress_callback(60, f"La consulta devolvió {len(df)} filas...")
+            progress_callback(60, f"La consulta devolvió {len(result)} filas...")
 
         # Don't close - keep connection alive in pool
 
-        if df.empty:
+        if not result:
             error_msg = "No se devolvieron datos para los filtros seleccionados."
             if bbox:
                 error_msg += f" Intente alejar el zoom o deshabilite el filtro de ventana. Bbox usado: {bbox}"
@@ -779,28 +778,33 @@ def load_census_layer(
         layer.updateFields()
 
         if progress_callback:
-            progress_callback(75, f"Procesando {len(df)} entidades...")
+            progress_callback(75, f"Procesando {len(result)} entidades...")
 
         # Add features
         features = []
-        total_rows = len(df)
-        for idx, row in df.iterrows():
+        total_rows = len(result)
+        for idx, row in enumerate(result):
             feature = QgsFeature()
 
+            # Row format: (geo_id, wkt, col1, col2, col3, ...)
+            geo_id = row[0]
+            wkt = row[1]
+
             # Parse geometry from WKT (converted by ST_AsText)
-            geom = QgsGeometry.fromWkt(row["wkt"])
+            geom = QgsGeometry.fromWkt(wkt)
 
             if geom.isNull():
-                raise Exception(f"Geometría inválida para entidad {row['geo_id']}")
+                raise Exception(f"Geometría inválida para entidad {geo_id}")
 
             feature.setGeometry(geom)
 
             # Set attributes: geo_id + all category column values
-            attributes = [row["geo_id"]]
-            for col_name in column_names:
-                val = row.get(col_name)
-                # Handle NaN/NULL values
-                attributes.append(float(val) if val is not None and str(val) != "nan" else None)
+            attributes = [geo_id]
+            # Column values start at index 2 (after geo_id and wkt)
+            for col_idx in range(len(column_names)):
+                val = row[2 + col_idx]
+                # Handle NULL values
+                attributes.append(float(val) if val is not None else None)
 
             feature.setAttributes(attributes)
             features.append(feature)
@@ -840,7 +844,7 @@ def load_census_layer(
 
 
 def run_custom_query(sql, progress_callback=None):
-    """Ejecutar SQL arbitrario contra datos del censo, devolver QgsVectorLayer o DataFrame
+    """Ejecutar SQL arbitrario contra datos del censo, devolver QgsVectorLayer o result tuple
 
     Tablas disponibles:
         radios    → geometry + COD_2022, PROV, DEPTO, FRACC, RADIO
@@ -848,7 +852,7 @@ def run_custom_query(sql, progress_callback=None):
         metadata  → codigo_variable, etiqueta_variable, entidad
 
     Returns:
-        (result, error) donde result es QgsVectorLayer, DataFrame, o None
+        (result, error) donde result es QgsVectorLayer, (columns, rows), o None
     """
     try:
         if progress_callback:
@@ -868,66 +872,84 @@ def run_custom_query(sql, progress_callback=None):
         if progress_callback:
             progress_callback(30, "Ejecutando consulta...")
 
-        df = con.execute(sql).df()
+        result_rel = con.execute(sql)
+        columns = [desc[0] for desc in result_rel.description]
+        rows = result_rel.fetchall()
         # Don't close - keep connection alive in pool
 
-        if df.empty:
+        if not rows:
             return None, "La consulta no devolvió resultados"
 
         if progress_callback:
             progress_callback(50, "Procesando resultados...")
 
         # Check if result has geometry (wkt column)
-        if "wkt" in df.columns:
-            layer = _df_to_layer(df, progress_callback)
+        if "wkt" in columns:
+            layer = _result_to_layer(columns, rows, progress_callback)
             return layer, None
         else:
-            return df, None
+            return (columns, rows), None
 
     except Exception as e:
         return None, str(e)
 
 
-def _df_to_layer(df, progress_callback=None):
-    """Convertir DataFrame con columna wkt a QgsVectorLayer"""
+def _result_to_layer(columns, rows, progress_callback=None):
+    """Convertir resultado de consulta con columna wkt a QgsVectorLayer"""
     from qgis.core import Qgis, QgsMessageLog
 
     layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "Resultado de Consulta SQL", "memory")
     provider = layer.dataProvider()
 
+    # Find wkt column index
+    wkt_idx = columns.index("wkt")
+
     # Build fields from non-geometry columns
     fields = []
-    for col in df.columns:
+    non_wkt_indices = []
+    for idx, col in enumerate(columns):
         if col == "wkt":
             continue
-        if df[col].dtype in ["int64", "int32"]:
-            fields.append(QgsField(col, QVariant.LongLong))
-        elif df[col].dtype in ["float64", "float32"]:
-            fields.append(QgsField(col, QVariant.Double))
+        non_wkt_indices.append(idx)
+
+        # Infer type from first non-NULL value
+        sample_val = None
+        for row in rows:
+            if row[idx] is not None:
+                sample_val = row[idx]
+                break
+
+        if sample_val is not None:
+            if isinstance(sample_val, int):
+                fields.append(QgsField(col, QVariant.LongLong))
+            elif isinstance(sample_val, float):
+                fields.append(QgsField(col, QVariant.Double))
+            else:
+                fields.append(QgsField(col, QVariant.String))
         else:
+            # Default to String if all values are NULL
             fields.append(QgsField(col, QVariant.String))
 
     provider.addAttributes(fields)
     layer.updateFields()
 
     if progress_callback:
-        progress_callback(60, f"Agregando {len(df)} entidades...")
+        progress_callback(60, f"Agregando {len(rows)} entidades...")
 
     features = []
-    non_wkt_cols = [c for c in df.columns if c != "wkt"]
 
-    for idx, row in df.iterrows():
+    for idx, row in enumerate(rows):
         feature = QgsFeature()
-        geom = QgsGeometry.fromWkt(row["wkt"])
+        geom = QgsGeometry.fromWkt(row[wkt_idx])
         if not geom.isNull():
             feature.setGeometry(geom)
-            feature.setAttributes([row[c] for c in non_wkt_cols])
+            feature.setAttributes([row[i] for i in non_wkt_indices])
             features.append(feature)
 
         # Update progress
         if progress_callback and idx % 50 == 0:
-            percent = 60 + int((idx / len(df)) * 35)
-            progress_callback(percent, f"Procesando entidades: {idx + 1}/{len(df)}")
+            percent = 60 + int((idx / len(rows)) * 35)
+            progress_callback(percent, f"Procesando entidades: {idx + 1}/{len(rows)}")
 
     provider.addFeatures(features)
     layer.updateExtents()

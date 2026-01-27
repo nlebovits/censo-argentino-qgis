@@ -660,9 +660,10 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                 else:
                     self.lblSqlStatus.setText("Error: Se creó una capa inválida")
             else:
-                # DataFrame result (no geometry) - show in table
-                row_count = len(result)
-                col_count = len(result.columns)
+                # Tuple result (columns, rows) - no geometry - show in table
+                columns, rows = result
+                row_count = len(rows)
+                col_count = len(columns)
                 self.lblSqlStatus.setText(
                     f"La consulta devolvió {row_count} filas con {col_count} columnas"
                 )
@@ -673,22 +674,25 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                     min(row_count, 1000)
                 )  # Limit to 1000 rows for display
                 self.tblSqlResults.setColumnCount(col_count)
-                self.tblSqlResults.setHorizontalHeaderLabels(list(result.columns))
+                self.tblSqlResults.setHorizontalHeaderLabels(columns)
 
                 # Populate data (limit to first 1000 rows)
-                for row_idx, (_df_idx, row) in enumerate(result.head(1000).iterrows()):
-                    for col_idx, col_name in enumerate(result.columns):
-                        value = str(row[col_name])
+                for row_idx, row in enumerate(rows[:1000]):
+                    for col_idx, value in enumerate(row):
                         self.tblSqlResults.setItem(
-                            row_idx, col_idx, QtWidgets.QTableWidgetItem(value)
+                            row_idx, col_idx, QtWidgets.QTableWidgetItem(str(value))
                         )
 
                 # Resize columns to content
                 self.tblSqlResults.resizeColumnsToContents()
 
-                # Also log to QGIS log panel
+                # Also log to QGIS log panel (show first 20 rows)
+                log_lines = ["\t".join(columns)]  # Header
+                for row in rows[:20]:
+                    log_lines.append("\t".join(str(v) for v in row))
+                log_output = "\n".join(log_lines)
                 QgsMessageLog.logMessage(
-                    f"Resultado de consulta SQL ({row_count} filas, {col_count} columnas):\n{result.to_string(max_rows=20)}",
+                    f"Resultado de consulta SQL ({row_count} filas, {col_count} columnas):\n{log_output}",
                     "Censo Argentino",
                     Qgis.Info,
                 )
