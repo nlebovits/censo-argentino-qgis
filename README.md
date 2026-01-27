@@ -19,17 +19,19 @@ Plugin de QGIS para cargar datos del [Censo Nacional 2022](https://source.coop/n
 
 ## Instalación
 
-**Instalación desde archivo ZIP:**
+**Método recomendado - Repositorio oficial de QGIS:**
 
-1. Descargar el archivo ZIP: [censo-argentino-qgis-0.3.1.zip](https://github.com/nlebovits/censo-argentino-qgis/releases/download/v0.3.1/censo-argentino-qgis-0.3.1.zip)
-2. Abrir QGIS
-3. Ir a **Complementos → Administrar e instalar complementos**
-4. Hacer clic en la pestaña **Instalar desde ZIP**
-5. Seleccionar el archivo ZIP descargado
-6. Hacer clic en **Instalar complemento**
-7. Reiniciar QGIS
+1. Abrir QGIS
+2. Ir a **Complementos → Administrar e instalar complementos**
+3. En la pestaña **Todos**, buscar "Censo Argentino"
+4. Hacer clic en **Instalar complemento**
+5. El plugin aparecerá en **Complementos → Censo Argentino**
 
-El plugin estará disponible en el repositorio oficial de QGIS próximamente.
+**Instalación manual desde ZIP:**
+
+Si necesitas instalar una versión específica, puedes descargar el archivo ZIP desde [Releases](https://github.com/nlebovits/censo-argentino-qgis/releases) e instalar desde la pestaña **Instalar desde ZIP** en el administrador de complementos.
+
+**Nota sobre dependencias:** El plugin requiere el paquete Python `duckdb`. Si encuentras errores, consulta la [Guía de Solución de Problemas](https://nlebovits.github.io/censo-argentino-qgis/solucion-problemas/#error-modulo-duckdb-no-encontrado) para instrucciones de instalación.
 
 ## Desarrollo y Contribución
 

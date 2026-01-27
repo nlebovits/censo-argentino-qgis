@@ -30,28 +30,6 @@ Si el error persiste, verifique que DuckDB se instaló correctamente:
 
 **Solución**: Verifique su conexión. Los datos se consultan remotamente desde `data.source.coop`.
 
-## Carga lenta
-
-**Causa**: Consulta de muchos datos a nivel de radio censal.
-
-**Soluciones**:
-
-- Use un nivel geográfico mayor (Departamento o Provincia)
-- Active el filtro por extensión del mapa
-- Filtre por provincias específicas
-
-## La capa no tiene geometría
-
-**Causa** (modo SQL): La consulta no incluye columna `wkt`.
-
-**Solución**: Agregue `ST_AsText(g.geometry) as wkt` a su SELECT.
-
-## Variables no encontradas
-
-**Causa**: El tipo de entidad no coincide con la variable buscada.
-
-**Solución**: Cambie el tipo de entidad (Hogar, Persona, Vivienda). Las variables están asociadas a un tipo específico.
-
 ## Limpiar caché
 
 Si los metadatos parecen desactualizados:

@@ -5,11 +5,40 @@
 - QGIS 3.0 o superior
 - Conexión a Internet
 
-## Instalación desde archivo ZIP
+## Instalación desde el repositorio oficial de QGIS (Recomendado)
+
+El plugin está disponible en el repositorio oficial de QGIS.
+
+1. **Abrir QGIS**
+
+2. **Ir al administrador de complementos:**
+
+   Menú → **Complementos** → **Administrar e instalar complementos**
+
+3. **Buscar el plugin:**
+
+   - En la pestaña **Todos**, escribir "Censo Argentino" en el buscador
+   - El plugin debería aparecer en los resultados
+
+4. **Instalar:**
+
+   - Seleccionar "Censo Argentino"
+   - Hacer clic en **Instalar complemento**
+   - Esperar a que se complete la instalación
+
+5. **Verificar instalación:**
+
+   El plugin debería aparecer en el menú **Complementos** → **Censo Argentino**
+
+**Página oficial del plugin:** [https://plugins.qgis.org/plugins/censo_argentino_qgis/](https://plugins.qgis.org/plugins/censo_argentino_qgis/)
+
+## Instalación manual desde archivo ZIP
+
+Si necesitas instalar una versión específica o el repositorio oficial no está disponible:
 
 1. **Descargar el plugin:**
 
-   [Descargar censo-argentino-qgis-0.3.1.zip](https://github.com/nlebovits/censo-argentino-qgis/releases/download/v0.3.1/censo-argentino-qgis-0.3.1.zip)
+   Ir a [Releases](https://github.com/nlebovits/censo-argentino-qgis/releases) y descargar el archivo ZIP de la versión deseada
 
 2. **Abrir QGIS**
 
@@ -25,23 +54,15 @@
    - Seleccionarlo y hacer clic en **Abrir**
    - Hacer clic en **Instalar complemento**
 
-5. **Confirmar la instalación:**
+5. **Reiniciar QGIS** (recomendado)
 
-   Aparecerá un mensaje confirmando que el plugin se instaló correctamente.
-
-6. **Reiniciar QGIS** (recomendado)
-
-7. **Verificar instalación:**
+6. **Verificar instalación:**
 
    El plugin debería aparecer en el menú **Complementos** → **Censo Argentino**
 
 ## Instalar dependencias (si es necesario)
 
 El plugin requiere el paquete Python `duckdb`. Si al abrir el plugin aparece un error de módulo faltante, consulte la sección [Error: Módulo DuckDB no encontrado](solucion-problemas.md#error-modulo-duckdb-no-encontrado) en Solución de Problemas.
-
-## Repositorio oficial de QGIS
-
-El plugin estará disponible próximamente en el repositorio oficial de QGIS, donde se podrá instalar directamente desde el administrador de complementos buscando "Censo Argentino".
 
 ## Problemas después de la instalación
 
