@@ -13,7 +13,7 @@ sys.modules["qgis.core"] = MagicMock()
 sys.modules["qgis.PyQt"] = MagicMock()
 sys.modules["qgis.PyQt.QtCore"] = MagicMock()
 
-from query import sanitize_category_label  # noqa: E402
+from censo_argentino_qgis.query import sanitize_category_label  # noqa: E402
 
 
 class TestSanitizeCategoryLabel:

@@ -14,13 +14,16 @@ Documentación para Claude y desarrolladores sobre la estructura y filosofía de
 
 ```
 censo-argentino-qgis/
-├── *.py                    # Módulos principales del plugin
+├── censo_argentino_qgis/  # Módulos principales del plugin
+│   ├── __init__.py        # Inicialización del plugin
 │   ├── plugin.py          # Punto de entrada QGIS
 │   ├── dialog.py          # Interfaz gráfica
+│   ├── dialog.ui          # Archivo Qt Designer (interfaz)
 │   ├── query.py           # Consultas DuckDB y caché
-│   └── query_builders.py  # Construcción SQL dinámica
-├── *.ui                   # Archivos Qt Designer (interfaz)
-├── metadata.txt           # Metadatos del plugin (versión, descripción)
+│   ├── query_builders.py  # Construcción SQL dinámica
+│   ├── validation.py      # Validación SQL
+│   ├── metadata.txt       # Metadatos del plugin (versión, descripción)
+│   └── icon.png          # Icono del plugin
 ├── tests/                 # Tests con pytest
 ├── docs/                  # Documentación MkDocs
 │   ├── *.md              # Páginas de documentación
@@ -53,6 +56,8 @@ pip install -r requirements-dev.txt
 
 ### Testing
 
+**IMPORTANTE**: Los tests DEBEN ejecutarse usando el entorno virtual `.venv`:
+
 ```bash
 # Ejecutar todos los tests
 .venv/bin/pytest tests/ -v
@@ -64,7 +69,31 @@ pip install -r requirements-dev.txt
 .venv/bin/pytest tests/test_query_builders.py -v
 ```
 
+**NO usar**:
+- `pytest` (sin ruta al venv)
+- `python -m pytest` (usa el Python del sistema)
+- `uv run pytest` (el proyecto no tiene `[project]` en pyproject.toml)
+
 **Nota**: Algunos tests requieren conexión a Internet (marcados como `@pytest.mark.skip`).
+
+### Pre-commit Hooks
+
+**IMPORTANTE**: Los hooks DEBEN ejecutarse usando el entorno virtual `.venv`:
+
+```bash
+# Ejecutar hooks en todos los archivos
+.venv/bin/pre-commit run --all-files
+
+# Ejecutar solo en archivos staged
+.venv/bin/pre-commit run
+
+# Instalar hooks para que corran automáticamente
+.venv/bin/pre-commit install
+```
+
+**NO usar**:
+- `pre-commit` (sin ruta al venv)
+- Hooks configurados: `ruff` (linting) y `ruff-format` (formateo)
 
 ## Releases
 
