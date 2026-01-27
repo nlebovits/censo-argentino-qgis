@@ -16,7 +16,7 @@ include:
   - "README.md"
   - "docs/imgs/ejemplo.png"
 
-# Archivos a excluir
+# Archivos a excluir (importante: reducir tamaño del ZIP)
 exclude:
   - "tests/*"
   - ".git/*"
@@ -28,14 +28,16 @@ exclude:
   - ".coverage"
   - ".venv/*"
   - "requirements-dev.txt"
+  - "requirements.txt"
   - "pyproject.toml"
   - "scripts/*"
   - "plans/*"
-  - "docs/*.md"
+  - "docs/*"
   - "mkdocs.yml"
-
-# Archivo de changelog (para extraer notas de release)
-changelog_path: docs/CHANGELOG.md
+  - ".qgis-plugin-ci"
+  - "CLAUDE.md"
+  - ".gitignore"
+  - ".ruff.toml"
 
 # Crear GitHub release
 create_release: true
