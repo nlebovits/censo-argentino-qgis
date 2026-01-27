@@ -4,7 +4,6 @@
 plugin_path: censo_argentino_qgis
 github_organization_slug: nlebovits
 project_slug: censo-argentino-qgis
-changelog_path: docs/CHANGELOG.md
 
 # Archivos a excluir (importante: reducir tamaño del ZIP)
 exclude:
@@ -28,9 +27,4 @@ exclude:
   - "CLAUDE.md"
   - ".gitignore"
   - ".ruff.toml"
-
-# Crear GitHub release
-create_release: true
-
-# Publicar en repositorio oficial de QGIS
-publish: true
+  - ".pre-commit-config.yaml"

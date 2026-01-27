@@ -69,15 +69,47 @@ jobs:
             echo "✓ OSGEO_PASSWORD está configurado"
           fi
 
-      - name: Publicar en QGIS Plugin Repository y GitHub Release
+      - name: Extraer changelog para esta versión
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          CHANGELOG=$(awk "/## \[$VERSION\]/,/## \[/" docs/CHANGELOG.md | sed '1d;$d')
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="Release $VERSION"
+          fi
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Crear GitHub Release
+        uses: ncipollo/create-release@v1
+        with:
+          tag: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.version }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+
+      - name: Empaquetar plugin con qgis-plugin-ci
+        run: |
+          qgis-plugin-ci package ${{ steps.version.outputs.version }}
+
+      - name: Subir ZIP a GitHub Release
+        uses: ncipollo/create-release@v1
+        with:
+          tag: ${{ steps.version.outputs.tag }}
+          allowUpdates: true
+          artifacts: "*.zip"
+          omitBodyDuringUpdate: true
+          omitNameDuringUpdate: true
+
+      - name: Publicar en plugins.qgis.org
         env:
           OSGEO_USERNAME: ${{ secrets.OSGEO_USER }}
           OSGEO_PASSWORD: ${{ secrets.OSGEO_PASSWORD }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           qgis-plugin-ci release ${{ steps.version.outputs.version }} \
             --release-tag ${{ steps.version.outputs.tag }} \
-            --github-token "$GITHUB_TOKEN" \
             --osgeo-username "$OSGEO_USERNAME" \
             --osgeo-password "$OSGEO_PASSWORD"
 
