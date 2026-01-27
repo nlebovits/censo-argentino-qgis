@@ -43,7 +43,7 @@ jobs:
 
       - name: Verificar versión en metadata.txt
         run: |
-          METADATA_VERSION=$(grep '^version=' metadata.txt | cut -d'=' -f2)
+          METADATA_VERSION=$(grep '^version=' censo_argentino_qgis/metadata.txt | cut -d'=' -f2)
           if [ "$METADATA_VERSION" != "${{ steps.version.outputs.version }}" ]; then
             echo "Error: ¡Versiones no coinciden!"
             echo "  Versión del tag: ${{ steps.version.outputs.version }}"
