@@ -9,8 +9,10 @@ from qgis.utils import iface
 
 from .query import (
     get_geographic_codes,
+    get_variable_categories,
     get_variables,
     load_census_layer,
+    preload_all_metadata,
     run_custom_query,
 )
 
@@ -101,6 +103,8 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.loader_threads = []  # Track active threads
         self.last_query = ""  # Store last executed query for copying
         self.last_browse_query = ""  # Store last Browse tab query for error logging
+        self.variable_categories = {}  # Store categories for each selected variable
+        self.category_widgets = {}  # Store category UI widgets per variable
 
         # Search debounce timer
         self.search_timer = QTimer()
@@ -111,6 +115,9 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         # Initialize UI
         self.progressBar.hide()
         self.lblStatus.hide()
+
+        # Initialize category section (collapsed by default)
+        self.groupBoxCategories.setChecked(False)
 
         # Initialize Browse tab
         self.init_year_combo()
@@ -124,6 +131,8 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.btnSelectAllVars.clicked.connect(self.on_select_all_vars_clicked)
         self.btnClearAllVars.clicked.connect(self.on_clear_all_vars_clicked)
         self.btnLoad.clicked.connect(self.on_load_clicked)
+        self.btnDocs.clicked.connect(self.on_docs_clicked)
+        self.btnTroubleshooting.clicked.connect(self.on_troubleshooting_clicked)
 
         # Initialize SQL tab
         self.init_sql_tab()
@@ -171,9 +180,16 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         QCoreApplication.processEvents()
 
     def load_data_async(self):
-        """Load initial data (geo codes and variables) in background threads"""
+        """Load initial data (geo codes, variables, and metadata) in background threads"""
         # Show loading state
         self.lblDescription.setText("Cargando datos...")
+
+        # Preload all metadata in background (makes category lookups instant)
+        metadata_thread = DataLoaderThread(preload_all_metadata, "metadata")
+        metadata_thread.finished.connect(self.on_metadata_loaded)
+        metadata_thread.error.connect(self.on_data_load_error)
+        self.loader_threads.append(metadata_thread)
+        metadata_thread.start()
 
         # Load geographic codes in background
         geo_level = self.comboGeoLevel.currentData()
@@ -192,6 +208,16 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             var_thread.error.connect(self.on_data_load_error)
             self.loader_threads.append(var_thread)
             var_thread.start()
+
+    def on_metadata_loaded(self, metadata_map, data_type):
+        """Handle metadata preload completion"""
+        # Metadata is now cached - all category lookups will be instant
+        QgsMessageLog.logMessage(
+            f"Metadata precargados: {len(metadata_map)} variables con categorías",
+            "Censo Argentino",
+            Qgis.Info,
+        )
+        self.check_loading_complete()
 
     def on_geo_codes_loaded(self, geo_codes, data_type):
         """Handle geographic codes loaded in background"""
@@ -287,22 +313,35 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             item.setHidden(search_text not in item_text)
 
     def on_variable_changed(self):
-        """Update description when variables are checked"""
+        """Update description and category selection when variables are checked"""
         checked_count = 0
         last_checked_code = None
+        currently_checked = set()
 
         for i in range(self.listVariables.count()):
             item = self.listVariables.item(i)
             if item.checkState() == Qt.Checked:
                 checked_count += 1
-                last_checked_code = item.data(Qt.UserRole)
+                var_code = item.data(Qt.UserRole)
+                last_checked_code = var_code
+                currently_checked.add(var_code)
 
+        # Update description
         if checked_count == 1 and last_checked_code in self.variables:
             self.lblDescription.setText(self.variables[last_checked_code])
         elif checked_count > 1:
             self.lblDescription.setText(f"{checked_count} variables seleccionadas")
         else:
             self.lblDescription.setText("")
+
+        # Update category UI: remove unchecked variables, add newly checked ones
+        for var_code in list(self.category_widgets.keys()):
+            if var_code not in currently_checked:
+                self.remove_category_widget(var_code)
+
+        for var_code in currently_checked:
+            if var_code not in self.category_widgets:
+                self.add_category_widget(var_code)
 
     def on_select_all_vars_clicked(self):
         """Select all visible variables in the list"""
@@ -316,6 +355,85 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         for i in range(self.listVariables.count()):
             item = self.listVariables.item(i)
             item.setCheckState(Qt.Unchecked)
+
+    def add_category_widget(self, var_code):
+        """Add collapsible category selection widget for a variable"""
+        # Fetch categories asynchronously
+        try:
+            cat_data = get_variable_categories(var_code)
+            categories = cat_data["categories"]
+
+            if not categories:
+                # No categories for this variable, skip UI
+                return
+
+            # Create group box for this variable
+            group_box = QtWidgets.QGroupBox(f"{var_code} - {self.variables.get(var_code, '')}")
+            group_box.setCheckable(True)
+            group_box.setChecked(False)  # Collapsed by default
+            layout = QtWidgets.QVBoxLayout()
+
+            # Add Select All / Unselect All buttons
+            button_layout = QtWidgets.QHBoxLayout()
+            btn_select_all = QtWidgets.QPushButton("Seleccionar todos")
+            btn_unselect_all = QtWidgets.QPushButton("Deseleccionar todos")
+
+            def select_all_categories():
+                for checkbox in group_box.findChildren(QtWidgets.QCheckBox):
+                    checkbox.setChecked(True)
+
+            def unselect_all_categories():
+                for checkbox in group_box.findChildren(QtWidgets.QCheckBox):
+                    checkbox.setChecked(False)
+
+            btn_select_all.clicked.connect(select_all_categories)
+            btn_unselect_all.clicked.connect(unselect_all_categories)
+            button_layout.addWidget(btn_select_all)
+            button_layout.addWidget(btn_unselect_all)
+            layout.addLayout(button_layout)
+
+            # Add checkbox for each category
+            category_checkboxes = []
+            for valor, etiqueta in categories:
+                checkbox = QtWidgets.QCheckBox(f"{valor} - {etiqueta}")
+                checkbox.setChecked(True)  # Default: all selected
+                checkbox.setProperty("valor", valor)
+                layout.addWidget(checkbox)
+                category_checkboxes.append(checkbox)
+
+            group_box.setLayout(layout)
+
+            # Add to scroll area
+            self.layoutCategories.addWidget(group_box)
+
+            # Store widget and checkboxes for later retrieval
+            self.category_widgets[var_code] = {
+                "group_box": group_box,
+                "checkboxes": category_checkboxes,
+            }
+
+        except Exception as e:
+            QgsMessageLog.logMessage(
+                f"Error loading categories for {var_code}: {e}", "Censo Argentino", Qgis.Warning
+            )
+
+    def remove_category_widget(self, var_code):
+        """Remove category selection widget for a variable"""
+        if var_code in self.category_widgets:
+            widget_data = self.category_widgets[var_code]
+            group_box = widget_data["group_box"]
+            self.layoutCategories.removeWidget(group_box)
+            group_box.deleteLater()
+            del self.category_widgets[var_code]
+
+    def get_selected_categories(self):
+        """Get dictionary of selected categories per variable"""
+        selected = {}
+        for var_code, widget_data in self.category_widgets.items():
+            checkboxes = widget_data["checkboxes"]
+            selected_vals = [cb.property("valor") for cb in checkboxes if cb.isChecked()]
+            selected[var_code] = selected_vals
+        return selected
 
     def on_load_clicked(self):
         """Load layers for checked census variables"""
@@ -380,6 +498,16 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                 )
                 bbox = None
 
+        # Validate category selection
+        selected_categories = self.get_selected_categories()
+        for var_code in variable_codes:
+            if var_code in selected_categories and len(selected_categories[var_code]) == 0:
+                self.lblDescription.setText(
+                    f"Error: No se seleccionaron categorías para {var_code}. "
+                    f"Seleccione al menos una categoría o todas."
+                )
+                return
+
         self.lblDescription.setText("")
         self.progressBar.show()
         self.lblStatus.show()
@@ -387,12 +515,13 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.btnLoad.setEnabled(False)
 
         try:
-            # Load single layer with all variables
+            # Load single layer with all variables (filtered by selected categories)
             layer = load_census_layer(
                 variable_codes,
                 geo_level=geo_level,
                 geo_filters=geo_filters,
                 bbox=bbox,
+                selected_categories=selected_categories,
                 progress_callback=self.update_progress,
             )
 
@@ -588,3 +717,23 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
     def on_clear_log_clicked(self):
         """Clear the query log"""
         self.txtQueryLog.setPlainText("-- Registro de consultas borrado\n\n")
+
+    def on_docs_clicked(self):
+        """Open documentation in browser"""
+        import webbrowser
+
+        docs_url = "https://nlebovits.github.io/censo-argentino-qgis/"
+        webbrowser.open(docs_url)
+        QgsMessageLog.logMessage(
+            f"Abriendo documentación: {docs_url}", "Censo Argentino", Qgis.Info
+        )
+
+    def on_troubleshooting_clicked(self):
+        """Open troubleshooting documentation in browser"""
+        import webbrowser
+
+        docs_url = "https://nlebovits.github.io/censo-argentino-qgis/solucion-problemas/"
+        webbrowser.open(docs_url)
+        QgsMessageLog.logMessage(
+            f"Abriendo solución de problemas: {docs_url}", "Censo Argentino", Qgis.Info
+        )
