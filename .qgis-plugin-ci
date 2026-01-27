@@ -3,6 +3,8 @@
 
 plugin_name: censo_argentino_qgis
 plugin_path: .
+github_organization_slug: nlebovits
+project_slug: censo-argentino-qgis
 
 # Archivos a incluir en el ZIP del plugin
 include:
