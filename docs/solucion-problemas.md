@@ -4,7 +4,9 @@
 
 **Causa**: El paquete Python `duckdb` no está instalado o no es accesible para QGIS.
 
-**Solución**: Instalar DuckDB desde la consola Python de QGIS (funciona en Windows, Linux y macOS):
+**Solución recomendada**: Instalar el plugin [QDuckDB](https://plugins.qgis.org/plugins/qduckdb/) desde el repositorio oficial de QGIS y activarlo. Esto instala DuckDB automáticamente y evita problemas con pip.
+
+**Solución alternativa**: Instalar DuckDB manualmente desde la consola Python de QGIS (funciona en Windows, Linux y macOS):
 
 1. En QGIS, abra la consola de Python: **Complementos → Consola de Python**
 2. Pegue este código:

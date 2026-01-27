@@ -62,7 +62,11 @@ Si necesitas instalar una versión específica o el repositorio oficial no está
 
 ## Instalar dependencias (si es necesario)
 
-El plugin requiere el paquete Python `duckdb`. Si al abrir el plugin aparece un error de módulo faltante, consulte la sección [Error: Módulo DuckDB no encontrado](solucion-problemas.md#error-modulo-duckdb-no-encontrado) en Solución de Problemas.
+El plugin requiere el paquete Python `duckdb`.
+
+**Recomendación:** Antes de instalar Censo Argentino, instale primero el plugin [QDuckDB](https://plugins.qgis.org/plugins/qduckdb/) desde el repositorio oficial de QGIS y actívelo. Esto evita problemas con `pip install duckdb`.
+
+Si al abrir el plugin aparece un error de módulo faltante, consulte la sección [Error: Módulo DuckDB no encontrado](solucion-problemas.md#error-modulo-duckdb-no-encontrado) en Solución de Problemas.
 
 ## Problemas después de la instalación
 
