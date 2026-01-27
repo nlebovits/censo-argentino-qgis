@@ -52,6 +52,23 @@ jobs:
           fi
           echo "✓ Versión coincide: $METADATA_VERSION"
 
+      - name: Verificar secrets configurados
+        run: |
+          echo "Verificando secrets..."
+          if [ -z "${{ secrets.OSGEO_USER }}" ]; then
+            echo "❌ ERROR: OSGEO_USER no está configurado"
+            exit 1
+          else
+            echo "✓ OSGEO_USER está configurado"
+          fi
+
+          if [ -z "${{ secrets.OSGEO_PASSWORD }}" ]; then
+            echo "❌ ERROR: OSGEO_PASSWORD no está configurado"
+            exit 1
+          else
+            echo "✓ OSGEO_PASSWORD está configurado"
+          fi
+
       - name: Publicar en QGIS Plugin Repository y GitHub Release
         run: |
           qgis-plugin-ci release ${{ steps.version.outputs.version }} \
