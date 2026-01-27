@@ -35,46 +35,14 @@
 
    El plugin debería aparecer en el menú **Complementos** → **Censo Argentino**
 
-## Instalar DuckDB (si es necesario)
+## Instalar dependencias (si es necesario)
 
-El plugin requiere el paquete Python `duckdb`. Si al ejecutar el plugin aparece un error sobre DuckDB faltante, instalarlo manualmente:
-
-=== "Linux/macOS (QGIS sistema)"
-    ```bash
-    pip3 install duckdb --target ~/.local/share/QGIS/QGIS3/profiles/default/python/
-    ```
-
-=== "Linux (QGIS Flatpak)"
-    ```bash
-    pip3 install duckdb --target ~/.var/app/org.qgis.qgis/data/QGIS/QGIS3/profiles/default/python/
-    ```
-
-=== "Windows"
-    ```bash
-    # Abrir OSGeo4W Shell como administrador
-    python -m pip install duckdb
-    ```
+El plugin requiere el paquete Python `duckdb`. Si al abrir el plugin aparece un error de módulo faltante, consulte la sección [Error: Módulo DuckDB no encontrado](solucion-problemas.md#error-modulo-duckdb-no-encontrado) en Solución de Problemas.
 
 ## Repositorio oficial de QGIS
 
 El plugin estará disponible próximamente en el repositorio oficial de QGIS, donde se podrá instalar directamente desde el administrador de complementos buscando "Censo Argentino".
 
-## Solución de problemas
+## Problemas después de la instalación
 
-### El plugin no aparece en el menú
-
-1. Verificar que el plugin esté habilitado:
-   - **Complementos** → **Administrar e instalar complementos** → pestaña **Instalados**
-   - Marcar la casilla junto a **Censo Argentino**
-
-2. Reiniciar QGIS completamente
-
-### Error al cargar el plugin
-
-Revisar la consola Python de QGIS para ver mensajes de error:
-- **Complementos** → **Consola de Python**
-- Buscar mensajes relacionados con `censo-argentino-qgis`
-
-### Errores de DuckDB
-
-Si aparecen errores sobre DuckDB, seguir los pasos de instalación de DuckDB en la sección anterior.
+Si encuentra errores al usar el plugin, consulte la [Guía de Solución de Problemas](solucion-problemas.md).

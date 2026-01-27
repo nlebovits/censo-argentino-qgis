@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.4.0] - 2025-01-27
+
+### Agregado
+- **Expansión de categorías**: Variables categóricas ahora se expanden en columnas separadas (ej. `educacion_primaria`, `educacion_secundaria`)
+- **UI de selección de categorías**: Secciones colapsables por variable con checkboxes para filtrar categorías específicas
+- **Columnas _total automáticas**: Cada variable genera una columna de total además de las categorías individuales
+- **Precarga de metadatos**: Todos los metadatos (~1MB) se cargan al iniciar para lookups instantáneos
+- **Botones de ayuda**: Links directos a Documentación y Solución de Problemas en la UI
+- **Tooltips completos**: Todos los elementos de UI tienen tooltips explicativos
+- **Tests de integración**: 17 nuevos tests para expansión de categorías y corrección de producto cartesiano
+
+### Corregido
+- **Bug crítico de producto cartesiano**: JOIN entre geometría y censo antes de filtrar causaba totales inflados incorrectamente
+- **Implementación CTE-based**: Pivotea datos ANTES de hacer JOIN, garantizando relación 1:1 y totales correctos
+
+### Mejorado
+- **Rendimiento de categorías**: Lookups instantáneos vs ~1s por variable anteriormente
+- **Validación de columnas**: Advertencia en 50 columnas, bloqueo en 100 para evitar crashes de QGIS
+- **Nombres de columnas**: Sanitización completa (sin acentos, minúsculas, formato consistente)
+- **Documentación DuckDB**: Método universal de instalación que funciona en Windows/Linux/macOS
+- **Código 100% español**: Todas las docstrings, mensajes de error y logs traducidos
+
+### Técnico
+- Extracción de `query_builders.py` para testabilidad
+- Manejo de categorías NULL
+- Soporte para categorías de texto (no solo numéricas)
+- Caché consistente con formato de tuplas
+
 ## [0.3.0] - 2025-01-26
 
 ### Agregado

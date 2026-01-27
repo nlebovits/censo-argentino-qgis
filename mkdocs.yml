@@ -45,7 +45,6 @@ markdown_extensions:
 nav:
   - Inicio: index.md
   - Instalación: instalacion.md
-  - Inicio Rápido: inicio-rapido.md
   - Guía de Usuario: guia-usuario.md
   - Modo SQL: sql.md
   - Solución de Problemas: solucion-problemas.md

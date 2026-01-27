@@ -122,7 +122,7 @@ class TestBuildSpatialFilter:
         assert "ST_Intersects" in result
         assert "ST_GeomFromText" in result
         assert "POLYGON" in result
-        assert "4326" in result
+        # DuckDB doesn't support SRID parameter, so no 4326 in output
 
     def test_uses_correct_bbox_coordinates(self):
         """Should use bbox coordinates in correct order for POLYGON."""
@@ -159,53 +159,157 @@ class TestBuildSpatialFilter:
 
 
 class TestBuildPivotColumns:
-    """Tests for build_pivot_columns function."""
+    """Tests for build_pivot_columns function with category expansion."""
 
-    def test_builds_single_pivot_column(self):
-        """Should build pivot SQL for single variable."""
-        result = build_pivot_columns(["POB_TOT_P"])
-        expected = "MAX(CASE WHEN codigo_variable = 'POB_TOT_P' THEN valor END) AS POB_TOT_P"
-        assert result == expected
+    def test_builds_pivot_with_categories(self):
+        """Should build CASE statements for each variable+category."""
+        variable_categories_map = {
+            "PERSONA_P11": {
+                "categories": [("1", "Sí"), ("2", "No")],
+                "has_nulls": False,
+            }
+        }
 
-    def test_builds_multiple_pivot_columns(self):
-        """Should build pivot SQL for multiple variables."""
-        result = build_pivot_columns(["POB_TOT_P", "VIVIENDA_TOT", "HOGAR_TOT"])
+        result = build_pivot_columns(["PERSONA_P11"], variable_categories_map)
 
-        assert "POB_TOT_P" in result
-        assert "VIVIENDA_TOT" in result
-        assert "HOGAR_TOT" in result
-        assert result.count("MAX(CASE") == 3
-        assert result.count("AS ") == 3
+        # Check both categories present
+        assert "codigo_variable = 'PERSONA_P11'" in result
+        assert "valor_categoria = '1'" in result
+        assert "valor_categoria = '2'" in result
+        assert 'as "persona_p11_si"' in result
+        assert 'as "persona_p11_no"' in result
 
-    def test_comma_separates_columns(self):
-        """Should comma-separate multiple pivot columns."""
-        result = build_pivot_columns(["VAR1", "VAR2", "VAR3"])
-        parts = result.split(", ")
-        assert len(parts) == 3
+    def test_handles_multiple_variables_with_categories(self):
+        """Should handle multiple variables with different category counts."""
+        variable_categories_map = {
+            "PERSONA_P11": {"categories": [("1", "Sí"), ("2", "No")], "has_nulls": False},
+            "PERSONA_P19": {
+                "categories": [("1", "Pública"), ("2", "Privada"), ("3", "Ambas")],
+                "has_nulls": False,
+            },
+        }
 
-    def test_each_column_has_max_case_structure(self):
-        """Each pivot column should have MAX(CASE WHEN ... THEN ... END) structure."""
-        result = build_pivot_columns(["POB_TOT_P"])
-        assert "MAX(" in result
-        assert "CASE WHEN" in result
-        assert "THEN valor END" in result
+        result = build_pivot_columns(["PERSONA_P11", "PERSONA_P19"], variable_categories_map)
 
-    def test_handles_empty_list(self):
+        # Should have 7 total columns (2 + 1 total + 3 + 1 total)
+        assert result.count("SUM(CASE") == 7
+        assert "persona_p11_si" in result
+        assert "persona_p11_no" in result
+        assert "persona_p11_total" in result
+        assert "persona_p19_publica" in result
+        assert "persona_p19_privada" in result
+        assert "persona_p19_ambas" in result
+        assert "persona_p19_total" in result
+
+    def test_sanitizes_category_labels(self):
+        """Should handle special characters and accents in category labels."""
+        variable_categories_map = {
+            "TEST": {
+                "categories": [("1", "Categoría con ñ"), ("2", "0-14 años")],
+                "has_nulls": False,
+            }
+        }
+
+        result = build_pivot_columns(["TEST"], variable_categories_map)
+
+        # Check sanitization
+        assert "test_categoria_con_n" in result  # removed accent and ñ
+        assert "test_cat_0_14_anos" in result  # handled leading digit
+
+    def test_adds_null_column_when_has_nulls(self):
+        """Should add NULL category column if has_nulls is True."""
+        variable_categories_map = {"VAR1": {"categories": [("1", "Category 1")], "has_nulls": True}}
+
+        result = build_pivot_columns(["VAR1"], variable_categories_map)
+
+        # Should have 3 columns: one for category, one for NULLs, one for total
+        assert result.count("SUM(CASE") == 3
+        assert "valor_categoria = '1'" in result
+        assert "valor_categoria IS NULL" in result
+        assert 'as "var1_null"' in result
+        assert 'as "var1_total"' in result
+
+    def test_no_null_column_when_has_nulls_false(self):
+        """Should NOT add NULL column if has_nulls is False."""
+        variable_categories_map = {
+            "VAR1": {"categories": [("1", "Category 1")], "has_nulls": False}
+        }
+
+        result = build_pivot_columns(["VAR1"], variable_categories_map)
+
+        # Should have 2 columns: one for category, one for total
+        assert result.count("SUM(CASE") == 2
+        assert "IS NULL" not in result
+        assert 'as "var1_total"' in result
+
+    def test_handles_empty_category_list_total_only(self):
+        """Should create single total column for variables without categories."""
+        variable_categories_map = {"POB_TOT": {"categories": [], "has_nulls": False}}
+
+        result = build_pivot_columns(["POB_TOT"], variable_categories_map)
+
+        # Should create total column
+        assert 'as "pob_tot_total"' in result
+        assert "valor_categoria" not in result
+        assert result.count("SUM(CASE") == 1
+
+    def test_handles_empty_variable_list(self):
         """Should return empty string for empty variable list."""
-        result = build_pivot_columns([])
+        result = build_pivot_columns([], {})
         assert result == ""
 
-    def test_preserves_variable_code_names(self):
-        """Should use variable codes as both condition and alias."""
-        result = build_pivot_columns(["MY_VAR_CODE"])
-        assert "codigo_variable = 'MY_VAR_CODE'" in result
-        assert "AS MY_VAR_CODE" in result
+    def test_uses_full_length_names(self):
+        """Should NOT truncate to 10 characters (shapefile compatibility removed)."""
+        variable_categories_map = {
+            "TEST": {
+                "categories": [("1", "Very Long Category Name That Exceeds Ten")],
+                "has_nulls": False,
+            }
+        }
+
+        result = build_pivot_columns(["TEST"], variable_categories_map)
+
+        # Should have full name, not truncated
+        assert "very_long_category_name_that_exceeds_ten" in result
+
+    def test_newline_separates_columns(self):
+        """Should newline-separate multiple pivot columns for readability."""
+        variable_categories_map = {
+            "VAR1": {"categories": [("1", "Cat 1"), ("2", "Cat 2")], "has_nulls": False}
+        }
+
+        result = build_pivot_columns(["VAR1"], variable_categories_map)
+
+        # Should use newline + spaces for formatting
+        assert ",\n        " in result
 
     def test_handles_special_characters_in_codes(self):
         """Should handle variable codes with underscores and numbers."""
-        codes = ["POB_2022_TOT", "VAR_123", "TEST_VAR_A"]
-        result = build_pivot_columns(codes)
+        variable_categories_map = {
+            "POB_2022_TOT": {"categories": [("1", "Male"), ("2", "Female")], "has_nulls": False},
+            "VAR_123": {"categories": [("1", "Yes")], "has_nulls": False},
+        }
 
-        for code in codes:
-            assert f"codigo_variable = '{code}'" in result
-            assert f"AS {code}" in result
+        result = build_pivot_columns(["POB_2022_TOT", "VAR_123"], variable_categories_map)
+
+        # Should have columns for both variables
+        assert "pob_2022_tot_male" in result
+        assert "pob_2022_tot_female" in result
+        assert "var_123_yes" in result
+
+    def test_adds_total_column_for_each_variable(self):
+        """Should add _total column for each variable with categories."""
+        variable_categories_map = {
+            "PERSONA_P11": {"categories": [("1", "Sí"), ("2", "No")], "has_nulls": False}
+        }
+
+        result = build_pivot_columns(["PERSONA_P11"], variable_categories_map)
+
+        # Should have 3 columns: si, no, and total
+        assert result.count("SUM(CASE") == 3
+        assert 'as "persona_p11_si"' in result
+        assert 'as "persona_p11_no"' in result
+        assert 'as "persona_p11_total"' in result
+
+        # Total column should sum all categories (no valor_categoria filter)
+        assert "codigo_variable = 'PERSONA_P11' THEN conteo" in result

@@ -1,14 +1,28 @@
 # Solución de Problemas
 
-## El plugin no aparece en QGIS
+## Error: Módulo DuckDB no encontrado
 
-**Causa**: DuckDB no está instalado o está en la ubicación incorrecta.
+**Causa**: El paquete Python `duckdb` no está instalado o no es accesible para QGIS.
 
-**Solución**: Verifique la instalación de DuckDB:
+**Solución**: Instalar DuckDB desde la consola Python de QGIS (funciona en Windows, Linux y macOS):
 
-1. Abra la consola Python de QGIS (**Complementos → Consola Python**)
+1. En QGIS, abra la consola de Python: **Complementos → Consola de Python**
+2. Pegue este código:
+
+```python
+import subprocess
+import sys
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'duckdb'])
+```
+
+3. Presione Enter y espere a que termine la instalación
+4. Reinicie QGIS
+
+Si el error persiste, verifique que DuckDB se instaló correctamente:
+
+1. Abra nuevamente la consola Python de QGIS
 2. Ejecute: `import duckdb`
-3. Si falla, reinstale siguiendo las [instrucciones de instalación](instalacion.md)
+3. Si no aparece error, la instalación fue exitosa
 
 ## Error de conexión
 

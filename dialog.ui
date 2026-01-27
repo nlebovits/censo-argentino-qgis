@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>600</width>
-    <height>700</height>
+    <height>850</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>500</width>
-    <height>600</height>
+    <height>750</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -33,6 +33,49 @@
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_docs">
+         <item>
+          <spacer name="horizontalSpacer_docs">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnDocs">
+           <property name="text">
+            <string>Documentación</string>
+           </property>
+           <property name="toolTip">
+            <string>Abrir la documentación completa en el navegador</string>
+           </property>
+           <property name="flat">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnTroubleshooting">
+           <property name="text">
+            <string>Solución de Problemas</string>
+           </property>
+           <property name="toolTip">
+            <string>Ver soluciones a problemas comunes (dependencias, errores, etc.)</string>
+           </property>
+           <property name="flat">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
         <widget class="QLabel" name="label">
          <property name="text">
           <string>Año:</string>
@@ -40,7 +83,11 @@
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="comboYear"/>
+        <widget class="QComboBox" name="comboYear">
+         <property name="toolTip">
+          <string>Seleccione el año del censo (actualmente solo disponible 2022)</string>
+         </property>
+        </widget>
        </item>
        <item>
         <widget class="QLabel" name="label_4">
@@ -50,7 +97,11 @@
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="comboGeoLevel"/>
+        <widget class="QComboBox" name="comboGeoLevel">
+         <property name="toolTip">
+          <string>Radio (máximo detalle ~52k áreas), Fracción, Departamento o Provincia (más rápido)</string>
+         </property>
+        </widget>
        </item>
        <item>
         <widget class="QLabel" name="label_5">
@@ -70,6 +121,9 @@
          <property name="selectionMode">
           <enum>QAbstractItemView::NoSelection</enum>
          </property>
+         <property name="toolTip">
+          <string>Marque provincias o departamentos para filtrar los datos cargados</string>
+         </property>
         </widget>
        </item>
        <item>
@@ -80,7 +134,11 @@
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="comboEntityType"/>
+        <widget class="QComboBox" name="comboEntityType">
+         <property name="toolTip">
+          <string>Filtra las variables disponibles: Hogar, Persona o Vivienda</string>
+         </property>
+        </widget>
        </item>
        <item>
         <widget class="QLabel" name="label_2">
@@ -96,6 +154,9 @@
          </property>
          <property name="clearButtonEnabled">
           <bool>true</bool>
+         </property>
+         <property name="toolTip">
+          <string>Escriba para filtrar variables (ej: "educacion", "vivienda")</string>
          </property>
         </widget>
        </item>
@@ -135,6 +196,51 @@
          <property name="selectionMode">
           <enum>QAbstractItemView::NoSelection</enum>
          </property>
+         <property name="toolTip">
+          <string>Marque una o más variables. Cada variable con categorías generará múltiples columnas</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBoxCategories">
+         <property name="title">
+          <string>Categorías (seleccionar por variable)</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+         <property name="toolTip">
+          <string>Active para filtrar categorías específicas. Por defecto se incluyen todas las categorías</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_categories">
+          <item>
+           <widget class="QScrollArea" name="scrollAreaCategories">
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>250</height>
+             </size>
+            </property>
+            <property name="widgetResizable">
+             <bool>true</bool>
+            </property>
+            <widget class="QWidget" name="scrollAreaWidgetContents">
+             <property name="geometry">
+              <rect>
+               <x>0</x>
+               <y>0</y>
+               <width>550</width>
+               <height>248</height>
+              </rect>
+             </property>
+             <layout class="QVBoxLayout" name="layoutCategories"/>
+            </widget>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
        <item>
@@ -191,12 +297,18 @@
          <property name="text">
           <string>Filtrar por extensión actual del mapa</string>
          </property>
+         <property name="toolTip">
+          <string>Cargar solo datos visibles en el canvas actual. Útil para áreas específicas</string>
+         </property>
         </widget>
        </item>
        <item>
         <widget class="QPushButton" name="btnLoad">
          <property name="text">
           <string>Cargar Capa</string>
+         </property>
+         <property name="toolTip">
+          <string>Generar y cargar capa con las variables y filtros seleccionados</string>
          </property>
         </widget>
        </item>
@@ -248,6 +360,9 @@
            <family>Consolas,Monaco,Courier New,monospace</family>
           </font>
          </property>
+         <property name="toolTip">
+          <string>Escriba consultas SQL personalizadas usando DuckDB. Incluya ST_AsText(g.geometry) as wkt para crear capas de mapa</string>
+         </property>
         </widget>
        </item>
        <item>
@@ -259,6 +374,9 @@
              <width>200</width>
              <height>0</height>
             </size>
+           </property>
+           <property name="toolTip">
+            <string>Seleccione un ejemplo para cargar una consulta SQL predefinida</string>
            </property>
           </widget>
          </item>
