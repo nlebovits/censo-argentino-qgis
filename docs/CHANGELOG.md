@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0] - 2025-01-27
+
+### Cambiado
+- **Límite de columnas ahora es advertencia confirmable**: Eliminado límite duro de 100 columnas
+- **Diálogo de confirmación**: Cuando se cargan >100 columnas, se pregunta al usuario si desea continuar
+- **Mejor UX**: Usuario decide si proceder con cargas grandes en lugar de bloqueo automático
+
+### Agregado
+- Función `calculate_column_count()` para calcular columnas antes de cargar
+
+### Eliminado
+- Límite duro de 100 columnas que bloqueaba cargas
+- Advertencia automática a 50 columnas
+
 ## [0.4.2] - 2025-01-27
 
 ### Corregido
