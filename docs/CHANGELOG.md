@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.4.2] - 2025-01-27
+
+### Corregido
+- **Estructura de directorios del plugin**: Reestructurado a subdirectorio `censo_argentino_qgis/` para compatibilidad con qgis-plugin-ci
+- **Publicación automática**: Resuelve error de generación de archivos ZIP con nombres inválidos (ej. `..0.4.1.zip`)
+- **Imports relativos**: Actualizados todos los imports en tests para usar el nuevo namespace `censo_argentino_qgis.*`
+
+### Mejorado
+- **Documentación de desarrollo**: CLAUDE.md ahora incluye instrucciones específicas para ejecutar tests y pre-commit hooks
+- **Configuración CI/CD**: `.qgis-plugin-ci` actualizado con `plugin_path` correcto
+
+### Técnico
+- Estructura de plugin conforme a estándares de QGIS
+- 77 tests pasando tras reestructuración
+- Mock paths actualizados en suite de tests
+
+## [0.4.1] - 2025-01-27
+
+### Corregido
+- **Dependencia pandas eliminada**: Reemplazado `.df()` por `.fetchall()` en DuckDB para evitar error "'pandas' is required"
+- **Compatibilidad Ubuntu**: Plugin ahora funciona sin pandas instalado en QGIS
+
+### Mejorado
+- **Documentación de instalación**: Recomienda instalar QDuckDB plugin primero para evitar problemas con pip
+- **Solución de problemas**: Sección expandida con troubleshooting para dependencias
+
 ## [0.4.0] - 2025-01-27
 
 ### Agregado
