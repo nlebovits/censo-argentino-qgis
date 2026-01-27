@@ -2,6 +2,7 @@
 # Más info: https://opengisch.github.io/qgis-plugin-ci/
 
 plugin_name: censo_argentino_qgis
+plugin_path: .
 
 # Archivos a incluir en el ZIP del plugin
 include:
