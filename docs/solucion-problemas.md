@@ -65,25 +65,18 @@ El plugin **cachea todos los metadatos localmente** en `~/.cache/qgis-censo-arge
 - ✅ Códigos geográficos: **instantáneo** (desde caché)
 - ✅ Tipos de entidad: **instantáneo** (desde caché)
 
-#### Carga de datos censales (30-60 segundos)
+#### Carga de datos censales
 Cuando haces clic en "Cargar Capa":
-- El plugin consulta archivos Parquet remotos (100-500 MB de geometrías + datos)
+- El plugin consulta archivos Parquet remotos con geometrías y datos censales
 - **El 80-90% del tiempo es descarga de red**, no procesamiento
-- Esto es inevitable - los datos son remotos y grandes
-
-**Tiempos típicos por nivel geográfico:**
-- **PROV** (24 provincias): 5-10 segundos
-- **DEPTO** (~500 departamentos): 15-25 segundos
-- **FRACC** (~5,000 fracciones): 30-45 segundos
-- **RADIO** (~50,000 radios): 45-90 segundos
+- El tiempo varía según tu conexión a Internet y la cantidad de datos solicitados
 
 ### ¿Por qué es lento?
 
 **No es el plugin - es física de red:**
 
 1. **Descarga de Parquet** (80-90% del tiempo)
-   - Geometrías de radios censales: 100-500 MB según nivel
-   - Datos censales: 2-5 GB (DuckDB descarga solo lo necesario)
+   - DuckDB descarga solo los datos necesarios para tu consulta
    - Limitado por tu velocidad de Internet
 
 2. **Procesamiento DuckDB** (5-10% del tiempo)

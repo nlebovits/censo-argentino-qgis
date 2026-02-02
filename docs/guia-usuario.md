@@ -93,15 +93,7 @@ Después de la primera carga, **los metadatos cargan instantáneamente** (< 1 se
 
 **Si algo parece lento en usos posteriores**, el problema está en la **descarga de datos censales** (geometrías + valores), no en metadatos. Esto es normal - ver [Solución de Problemas](solucion-problemas.md#rendimiento-y-tiempos-de-carga) para detalles.
 
-### Tiempos esperados
-
-| Operación | Primera vez | Usos posteriores |
-|-----------|-------------|------------------|
-| **Cargar metadatos** (listas de variables) | 5-15 segundos | < 1 segundo ✅ |
-| **Cargar capa RADIO** (52K polígonos) | 45-90 segundos | 45-90 segundos* |
-| **Cargar capa PROV** (24 polígonos) | 5-10 segundos | 5-10 segundos* |
-
-*Los datos censales (geometrías + valores) se consultan remotamente cada vez - no se cachean debido al tamaño (GBs).
+**Nota:** Los datos censales (geometrías + valores) se consultan remotamente cada vez que carga una capa. El tiempo de carga depende de su conexión a Internet y la cantidad de datos solicitados.
 
 ### Limpiar el caché
 
