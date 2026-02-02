@@ -44,79 +44,19 @@ El caché se regenera automáticamente en el próximo uso.
 
 ## Rendimiento y Tiempos de Carga
 
-### "Los metadatos tardan en cargar" / "Los campos se pueblan lentamente"
+### Primera carga lenta
 
-**Esto es normal la primera vez** que usas el plugin o cambias de año censal. Aquí está lo que sucede:
+**Primera vez:** El plugin descarga metadatos (~1 MB) desde Source.Coop y los cachea localmente en `~/.cache/qgis-censo-argentino/`. Tarda 5-15 segundos.
 
-#### Primera carga (5-15 segundos)
-El plugin debe descargar metadatos del censo desde Source.Coop:
-- `metadata.parquet` (~1 MB) - Diccionario de variables y categorías
-- `radios.parquet` (headers) - Lista de códigos geográficos
-- `census-data.parquet` (metadata) - Estructura de datos
+**Cargas posteriores:** Instantáneo (< 1 segundo) desde caché local.
 
-Verás mensajes como:
-- "Cargando metadatos del censo 2022..."
-- "Cargando códigos de PROV..."
-- "Variables cargadas"
+**Si sigue lento:** El problema es la descarga de datos censales (geometrías + valores), no metadatos. Esto depende de tu conexión a Internet.
 
-#### Cargas subsecuentes (instantáneas)
-El plugin **cachea todos los metadatos localmente** en `~/.cache/qgis-censo-argentino/`:
-- ✅ Variables y categorías: **instantáneo** (desde caché)
-- ✅ Códigos geográficos: **instantáneo** (desde caché)
-- ✅ Tipos de entidad: **instantáneo** (desde caché)
+### Mejorar rendimiento
 
-#### Carga de datos censales
-Cuando haces clic en "Cargar Capa":
-- El plugin consulta archivos Parquet remotos con geometrías y datos censales
-- **El 80-90% del tiempo es descarga de red**, no procesamiento
-- El tiempo varía según tu conexión a Internet y la cantidad de datos solicitados
-
-### ¿Por qué es lento?
-
-**No es el plugin - es física de red:**
-
-1. **Descarga de Parquet** (80-90% del tiempo)
-   - DuckDB descarga solo los datos necesarios para tu consulta
-   - Limitado por tu velocidad de Internet
-
-2. **Procesamiento DuckDB** (5-10% del tiempo)
-   - Joins y pivots de categorías
-   - Ya optimizado con CTEs y connection pooling
-
-3. **Creación de capa QGIS** (2-3% del tiempo)
-   - Parsing de geometrías WKT
-   - Creación de features con atributos
-
-### Cómo mejorar el rendimiento
-
-✅ **Primera vez:** Sé paciente - el caché se construye automáticamente
-
-✅ **Consultas grandes:** Usa filtros geográficos para reducir datos:
-- Selecciona solo provincias/departamentos necesarios
-- Limita el número de variables (cada una agrega columnas)
-
-✅ **Buen Internet:** Conexión rápida = consultas rápidas (la mayoría del tiempo es I/O de red)
-
-❌ **No es tu computadora:** Más RAM o CPU no ayuda mucho - el bottleneck es red
-
-### Verificar que el caché funciona
-
-1. **Primera carga:** Espera 5-15 segundos para que se pueblen los campos
-2. **Cierra y reabre el plugin**
-3. **Segunda carga:** Debe ser **instantánea** (<1 segundo)
-
-Si la segunda carga no es instantánea:
-- Verifica que existe `~/.cache/qgis-censo-argentino/`
-- Revisa los logs (Ver → Paneles → Mensajes de registro)
-- El caché puede estar corrupto - [límpialo](#limpiar-caché)
-
-### Mensaje de caché
-
-Cuando el plugin usa caché, verás:
-
-> ℹ️ **Usando datos cacheados.** Los metadatos se cargan instantáneamente desde caché local. Si necesitas actualizar, limpia el caché manualmente.
-
-Si ves este mensaje y aún es lento, el problema está en la **descarga de datos censales** (paso normal, no hay bug).
+- Usa filtros geográficos (selecciona solo provincias/departamentos necesarios)
+- Limita el número de variables
+- Conexión rápida = consultas rápidas (bottleneck es red)
 
 ## Ver logs detallados
 
