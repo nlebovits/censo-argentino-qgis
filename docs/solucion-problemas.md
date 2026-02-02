@@ -42,21 +42,9 @@ rm -rf ~/.cache/qgis-censo-argentino/
 
 El caché se regenera automáticamente en el próximo uso.
 
-## Rendimiento y Tiempos de Carga
+## Carga lenta la primera vez
 
-### Primera carga lenta
-
-**Primera vez:** El plugin descarga metadatos (~1 MB) desde Source.Coop y los cachea localmente en `~/.cache/qgis-censo-argentino/`. Tarda 5-15 segundos.
-
-**Cargas posteriores:** Instantáneo (< 1 segundo) desde caché local.
-
-**Si sigue lento:** El problema es la descarga de datos censales (geometrías + valores), no metadatos. Esto depende de tu conexión a Internet.
-
-### Mejorar rendimiento
-
-- Usa filtros geográficos (selecciona solo provincias/departamentos necesarios)
-- Limita el número de variables
-- Conexión rápida = consultas rápidas (bottleneck es red)
+La primera vez que cargues un campo, tiene que descargarse y cachearse localmente. Esto toma aproximadamente un minuto o menos. Después de eso, debería cargar casi instantáneamente.
 
 ## Ver logs detallados
 
