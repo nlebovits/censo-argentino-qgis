@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.6.0] - 2025-02-02
+
+### Agregado
+- **Soporte para Censo 2010**: Plugin ahora accede a datos del Censo Nacional 2010 además del 2022
+- **Selector de año censal**: Dropdown en la interfaz para elegir entre Censo 2010 y 2022
+- **Configuración centralizada**: Nueva arquitectura en `config.py` con URLs y parámetros por año
+- **Tests de configuración**: Suite de 84 tests para validar configuración de censos
+- **Documentación mejorada**: Secciones actualizadas sobre caché y rendimiento con datos reales
+
+### Mejorado
+- **Rendimiento de caché**: Documentación detallada sobre tiempos (~50ms) y tamaños (~1.3MB)
+- **Tolerancia de columnas**: Sistema de advertencia confirmable para >100 columnas
+- **Diálogos informativos**: Mejor UX con confirmación visual antes de cargas grandes
+
+### Técnico
+- Refactor de query builders para soporte multi-censo
+- Sistema de configuración CENSUS_CONFIG extensible
+- Tests de integración ampliados (77 → 159 tests)
+
 ## [0.5.0] - 2025-01-27
 
 ### Cambiado
