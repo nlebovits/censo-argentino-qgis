@@ -1,5 +1,10 @@
 # Guía de Usuario
 
+!!! tip "Primera vez usando el plugin"
+    **¿Los campos tardan en aparecer?** Es normal la primera vez. El plugin descarga metadatos del censo (5-15 segundos) y los cachea localmente. En usos posteriores, todo carga instantáneamente.
+
+    [Ver más sobre rendimiento →](#rendimiento-y-caché)
+
 ## Pestaña Explorar
 
 Interfaz visual para seleccionar y cargar datos del censo.
@@ -70,6 +75,32 @@ El plugin genera una capa de polígonos con:
 
 ![Ejemplo de visualización en QGIS](imgs/ejemplo.png)
 
-## Caché
+## Rendimiento y Caché
 
-Los metadatos (variables y códigos geográficos) se almacenan en `~/.cache/qgis-censo-argentino/` tras la primera carga. Puede eliminar esta carpeta para forzar una recarga.
+### Primera vez usando el plugin
+
+**Espere 5-15 segundos** la primera vez que abre el plugin o cambia de año censal. El plugin descarga y cachea metadatos del censo:
+
+- Variables disponibles y sus categorías
+- Códigos geográficos (provincias, departamentos, etc.)
+- Tipos de entidad
+
+Verá mensajes de progreso como "Cargando metadatos..." mientras se construye el caché local.
+
+### Usos posteriores
+
+Después de la primera carga, **los metadatos cargan instantáneamente** (< 1 segundo) desde el caché local en `~/.cache/qgis-censo-argentino/`.
+
+**Si algo parece lento en usos posteriores**, el problema está en la **descarga de datos censales** (geometrías + valores), no en metadatos. Esto es normal - ver [Solución de Problemas](solucion-problemas.md#rendimiento-y-tiempos-de-carga) para detalles.
+
+**Nota:** Los datos censales (geometrías + valores) se consultan remotamente cada vez que carga una capa. El tiempo de carga depende de su conexión a Internet y la cantidad de datos solicitados.
+
+### Limpiar el caché
+
+Si necesita forzar una recarga de metadatos:
+
+```bash
+rm -rf ~/.cache/qgis-censo-argentino/
+```
+
+El caché se regenera automáticamente en el próximo uso.

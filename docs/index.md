@@ -20,6 +20,9 @@ Consulta datos del [Censo Nacional 2022](https://source.coop/nlebovits/censo-arg
 2. Abra **Complementos → Censo Argentino**
 3. Seleccione una variable y haga clic en **Cargar Capa**
 
+!!! info "Primera vez"
+    La primera vez que abras el plugin tardará 5-15 segundos en cargar metadatos. Estos se cachean localmente y en usos posteriores todo carga instantáneamente. [Más info sobre rendimiento →](solucion-problemas.md#rendimiento-y-tiempos-de-carga)
+
 ## Fuente de datos
 
 Los datos provienen del [INDEC](https://www.indec.gob.ar/) (Instituto Nacional de Estadística y Censos) y están disponibles bajo licencia CC-BY-4.0.

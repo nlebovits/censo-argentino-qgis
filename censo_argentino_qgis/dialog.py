@@ -7,8 +7,10 @@ from qgis.PyQt.QtCore import QCoreApplication, Qt, QThread, QTimer, pyqtSignal
 from qgis.PyQt.QtGui import QFont
 from qgis.utils import iface
 
+from .config import AVAILABLE_YEARS
 from .query import (
     calculate_column_count,
+    get_cached_data,
     get_geographic_codes,
     get_variable_categories,
     get_variables,
@@ -22,39 +24,44 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "dialog.u
 
 EXAMPLE_QUERIES = {
     "-- Seleccionar un ejemplo --": "",
-    "Población total por radio": """SELECT
-    g.COD_2022 as geo_id,
+    "Población total por radio": """-- Las vistas 'radios' y 'census' cambian según el año seleccionado
+-- Para 2022 usa COD_2022, para 2010 usa COD_2010 automáticamente
+SELECT
+    c.id_geo as geo_id,
     ST_AsText(g.geometry) as wkt,
     c.conteo as total_pop
-FROM radios g
-JOIN census c ON g.COD_2022 = c.id_geo
-WHERE c.codigo_variable = 'POB_TOT_P'
+FROM census c
+JOIN radios g ON c.id_geo = COALESCE(g.COD_2022, g.COD_2010)
+WHERE c.codigo_variable LIKE '%POB_TOT%'
 LIMIT 1000""",
     "Comparar dos variables (plantilla de ratio)": """-- Reemplazar VAR_A y VAR_B con códigos de variable reales
+-- Las vistas cambian según el año seleccionado
 SELECT
-    g.COD_2022 as geo_id,
+    a.id_geo as geo_id,
     ST_AsText(g.geometry) as wkt,
     (a.conteo::float / NULLIF(b.conteo, 0)) * 100 as ratio
-FROM radios g
-JOIN census a ON g.COD_2022 = a.id_geo AND a.codigo_variable = 'VAR_A'
-JOIN census b ON g.COD_2022 = b.id_geo AND b.codigo_variable = 'VAR_B'
+FROM census a
+JOIN census b ON a.id_geo = b.id_geo AND b.codigo_variable = 'VAR_B'
+JOIN radios g ON a.id_geo = COALESCE(g.COD_2022, g.COD_2010)
+WHERE a.codigo_variable = 'VAR_A'
 LIMIT 1000""",
     "Agregar a nivel departamental": """SELECT
     c.valor_provincia || '-' || c.valor_departamento as geo_id,
     ST_AsText(ST_Union_Agg(g.geometry)) as wkt,
     SUM(c.conteo) as total
-FROM radios g
-JOIN census c ON g.COD_2022 = c.id_geo
-WHERE c.codigo_variable = 'POB_TOT_P'
+FROM census c
+JOIN radios g ON c.id_geo = COALESCE(g.COD_2022, g.COD_2010)
+WHERE c.codigo_variable LIKE '%POB_TOT%'
 GROUP BY c.valor_provincia, c.valor_departamento""",
-    "Filtrar por provincia": """SELECT
-    g.COD_2022 as geo_id,
+    "Filtrar por provincia": """-- Las vistas cambian según el año seleccionado
+SELECT
+    c.id_geo as geo_id,
     ST_AsText(g.geometry) as wkt,
     c.conteo as poblacion
-FROM radios g
-JOIN census c ON g.COD_2022 = c.id_geo
-WHERE c.codigo_variable = 'POB_TOT_P'
-  AND c.etiqueta_provincia = 'Buenos Aires'
+FROM census c
+JOIN radios g ON c.id_geo = COALESCE(g.COD_2022, g.COD_2010)
+WHERE c.codigo_variable LIKE '%POB_TOT%'
+  AND c.etiqueta_provincia LIKE '%Buenos Aires%'
 LIMIT 1000""",
     "Listar variables disponibles": """SELECT DISTINCT
     entidad,
@@ -67,7 +74,7 @@ SELECT
     c.etiqueta_provincia as provincia,
     SUM(c.conteo) as poblacion_total
 FROM census c
-WHERE c.codigo_variable = 'POB_TOT_P'
+WHERE c.codigo_variable LIKE '%POB_TOT%'
 GROUP BY c.valor_provincia, c.etiqueta_provincia
 ORDER BY poblacion_total DESC""",
 }
@@ -149,9 +156,10 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.load_data_async()
 
     def init_year_combo(self):
-        """Initialize year dropdown (hardcoded to 2022 for now)"""
+        """Initialize year dropdown with available census years"""
         self.comboYear.clear()
-        self.comboYear.addItem("2022", "2022")
+        for year in AVAILABLE_YEARS:
+            self.comboYear.addItem(year, year)
 
     def init_geo_level_combo(self):
         """Initialize geographic level dropdown"""
@@ -182,11 +190,20 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def load_data_async(self):
         """Load initial data (geo codes, variables, and metadata) in background threads"""
-        # Show loading state
-        self.lblDescription.setText("Cargando datos...")
+        year = self.comboYear.currentData() or "2022"
+
+        # Check if this is a first-time cache load (show special message)
+        cache_key = f"all_metadata_{year}"
+        is_first_load = get_cached_data(cache_key) is None
+
+        if is_first_load:
+            # Show caching dialog for first-time users
+            self.show_caching_message(year)
+        else:
+            self.lblDescription.setText("Cargando datos...")
 
         # Preload all metadata in background (makes category lookups instant)
-        metadata_thread = DataLoaderThread(preload_all_metadata, "metadata")
+        metadata_thread = DataLoaderThread(preload_all_metadata, "metadata", year=year)
         metadata_thread.finished.connect(self.on_metadata_loaded)
         metadata_thread.error.connect(self.on_data_load_error)
         self.loader_threads.append(metadata_thread)
@@ -195,7 +212,9 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         # Load geographic codes in background
         geo_level = self.comboGeoLevel.currentData()
         if geo_level:
-            geo_thread = DataLoaderThread(get_geographic_codes, "geo_codes", geo_level=geo_level)
+            geo_thread = DataLoaderThread(
+                get_geographic_codes, "geo_codes", year=year, geo_level=geo_level
+            )
             geo_thread.finished.connect(self.on_geo_codes_loaded)
             geo_thread.error.connect(self.on_data_load_error)
             self.loader_threads.append(geo_thread)
@@ -204,11 +223,31 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         # Load variables in background
         entity_type = self.comboEntityType.currentData()
         if entity_type:
-            var_thread = DataLoaderThread(get_variables, "variables", entity_type=entity_type)
+            var_thread = DataLoaderThread(
+                get_variables, "variables", year=year, entity_type=entity_type
+            )
             var_thread.finished.connect(self.on_variables_loaded)
             var_thread.error.connect(self.on_data_load_error)
             self.loader_threads.append(var_thread)
             var_thread.start()
+
+    def show_caching_message(self, year):
+        """Show a non-blocking message about first-time caching"""
+        self.lblDescription.setText(f"⏳ Cacheando metadatos del censo {year} (operación única)...")
+        # Also show a message box for visibility
+        msg = QtWidgets.QMessageBox(self)
+        msg.setIcon(QtWidgets.QMessageBox.Information)
+        msg.setWindowTitle("Cargando metadatos")
+        msg.setText(
+            f"Primera vez cargando datos del censo {year}.\n\n"
+            "El plugin está descargando y cacheando los metadatos.\n"
+            "Esto toma unos segundos y solo ocurre una vez por año censal.\n\n"
+            "Las próximas cargas serán instantáneas."
+        )
+        msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        # Use a timer to auto-close after 3 seconds
+        QTimer.singleShot(5000, msg.accept)
+        msg.show()  # Non-blocking show
 
     def on_metadata_loaded(self, metadata_map, data_type):
         """Handle metadata preload completion"""
@@ -261,12 +300,24 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def on_year_changed(self):
         """Load entity types and variables when year changes"""
-        self.on_entity_type_changed()
+        # Clear current data
+        self.listVariables.clear()
+        self.listGeoFilter.clear()
+        self.clear_all_category_widgets()
+
+        # Reload all data for the new year
+        self.load_data_async()
+
+    def clear_all_category_widgets(self):
+        """Remove all category selection widgets"""
+        for var_code in list(self.category_widgets.keys()):
+            self.remove_category_widget(var_code)
 
     def on_geo_level_changed(self):
         """Load geographic codes when level changes (async)"""
         self.listGeoFilter.clear()
         geo_level = self.comboGeoLevel.currentData()
+        year = self.comboYear.currentData() or "2022"
 
         if not geo_level:
             return
@@ -274,7 +325,9 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.lblDescription.setText("Cargando códigos geográficos...")
 
         # Load in background thread
-        geo_thread = DataLoaderThread(get_geographic_codes, "geo_codes", geo_level=geo_level)
+        geo_thread = DataLoaderThread(
+            get_geographic_codes, "geo_codes", year=year, geo_level=geo_level
+        )
         geo_thread.finished.connect(self.on_geo_codes_loaded)
         geo_thread.error.connect(self.on_data_load_error)
         self.loader_threads.append(geo_thread)
@@ -283,15 +336,19 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
     def on_entity_type_changed(self):
         """Load variables when entity type changes (async)"""
         self.listVariables.clear()
+        self.clear_all_category_widgets()
         self.lblDescription.setText("Cargando variables...")
 
         entity_type = self.comboEntityType.currentData()
+        year = self.comboYear.currentData() or "2022"
 
         if not entity_type:
             return
 
         # Load in background thread
-        var_thread = DataLoaderThread(get_variables, "variables", entity_type=entity_type)
+        var_thread = DataLoaderThread(
+            get_variables, "variables", year=year, entity_type=entity_type
+        )
         var_thread.finished.connect(self.on_variables_loaded)
         var_thread.error.connect(self.on_data_load_error)
         self.loader_threads.append(var_thread)
@@ -359,9 +416,11 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def add_category_widget(self, var_code):
         """Add collapsible category selection widget for a variable"""
+        year = self.comboYear.currentData() or "2022"
+
         # Fetch categories asynchronously
         try:
-            cat_data = get_variable_categories(var_code)
+            cat_data = get_variable_categories(year=year, variable_code=var_code)
             categories = cat_data["categories"]
 
             if not categories:
@@ -449,6 +508,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             self.lblDescription.setText("Por favor seleccione al menos una variable")
             return
 
+        year = self.comboYear.currentData() or "2022"
         geo_level = self.comboGeoLevel.currentData()
         variable_codes = [item.data(Qt.UserRole) for item in checked_variables]
 
@@ -517,7 +577,9 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
 
         try:
             # Check column count and warn if > 100
-            column_count = calculate_column_count(variable_codes, selected_categories)
+            column_count = calculate_column_count(
+                year=year, variable_codes=variable_codes, selected_categories=selected_categories
+            )
             if column_count > 100:
                 reply = QtWidgets.QMessageBox.question(
                     self,
@@ -537,7 +599,8 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
 
             # Load single layer with all variables (filtered by selected categories)
             layer = load_census_layer(
-                variable_codes,
+                year=year,
+                variable_codes=variable_codes,
                 geo_level=geo_level,
                 geo_filters=geo_filters,
                 bbox=bbox,
@@ -639,6 +702,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
     def on_run_sql_clicked(self):
         """Execute SQL query"""
         sql = self.txtSql.toPlainText().strip()
+        year = self.comboYear.currentData() or "2022"
 
         if not sql:
             self.lblSqlStatus.setText("Por favor ingrese una consulta SQL")
@@ -659,14 +723,16 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             return
 
         # Log the query
-        self.log_query(sql, "SQL")
+        self.log_query(sql, f"SQL ({year})")
 
         self.progressBarSql.show()
         self.lblSqlStatus.show()
         self.btnRunSql.setEnabled(False)
 
         try:
-            result, error = run_custom_query(sql, self.update_sql_progress)
+            result, error = run_custom_query(
+                sql, year=year, progress_callback=self.update_sql_progress
+            )
 
             if error:
                 self.lblSqlStatus.setText(f"Error: {error}")

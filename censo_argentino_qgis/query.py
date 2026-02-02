@@ -8,6 +8,8 @@ import duckdb
 from qgis.core import QgsFeature, QgsField, QgsGeometry, QgsVectorLayer
 from qgis.PyQt.QtCore import QVariant
 
+from .config import CENSUS_CONFIG
+
 
 class DuckDBConnectionPool:
     """Pool de conexiones singleton para DuckDB para evitar configuración repetida de conexión/extensiones"""
@@ -108,32 +110,78 @@ def get_cache_dir():
 
 
 def get_cached_data(cache_key):
-    """Recuperar datos en caché si existen"""
+    """Recuperar datos en caché si existen y son válidos.
+
+    Returns:
+        Datos cacheados si existen y son no-vacíos, None en caso contrario.
+        Los datos vacíos ({}, []) se consideran inválidos y se ignoran.
+    """
     cache_file = get_cache_dir() / f"{cache_key}.json"
     if cache_file.exists():
         try:
             with open(cache_file, encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                # Validar que los datos no estén vacíos (cache corrupto)
+                if data is None or data == {} or data == []:
+                    # Cache vacío/corrupto - eliminar y retornar None
+                    try:
+                        cache_file.unlink()
+                    except Exception:
+                        pass
+                    return None
+                return data
         except Exception:
-            # If cache is corrupted, ignore and re-fetch
+            # Si el cache está corrupto, eliminarlo y re-fetch
+            try:
+                cache_file.unlink()
+            except Exception:
+                pass
             return None
     return None
 
 
 def save_cached_data(cache_key, data):
-    """Guardar datos en caché"""
+    """Guardar datos en caché usando escritura atómica.
+
+    Solo guarda si los datos son no-vacíos. Usa escritura atómica
+    (escribir a archivo temporal, luego renombrar) para prevenir
+    archivos de caché corruptos por interrupciones.
+    """
+    # No guardar datos vacíos
+    if data is None or data == {} or data == []:
+        return
+
     cache_file = get_cache_dir() / f"{cache_key}.json"
+    temp_file = cache_file.with_suffix(".json.tmp")
+
     try:
-        with open(cache_file, "w", encoding="utf-8") as f:
+        # Escribir a archivo temporal primero
+        with open(temp_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+
+        # Renombrar atómicamente (en la mayoría de sistemas de archivos)
+        temp_file.replace(cache_file)
     except Exception:
-        # If we can't write cache, that's okay - just continue without caching
-        pass
+        # Si no podemos escribir, limpiar archivo temporal si existe
+        try:
+            if temp_file.exists():
+                temp_file.unlink()
+        except Exception:
+            pass
 
 
-def get_entity_types(progress_callback=None):
-    """Consultar metadata.parquet y devolver lista de tipos de entidad disponibles (con caché)"""
-    cache_key = "entity_types"
+def get_entity_types(year="2022", progress_callback=None):
+    """Consultar metadata.parquet y devolver lista de tipos de entidad disponibles (con caché)
+
+    Args:
+        year: Año del censo ("2022" o "2010")
+        progress_callback: Callback opcional para actualizaciones de progreso
+
+    Returns:
+        Lista de tipos de entidad disponibles
+    """
+    cache_key = f"entity_types_{year}"
+    config = CENSUS_CONFIG[year]
 
     # Check cache first
     cached = get_cached_data(cache_key)
@@ -151,10 +199,14 @@ def get_entity_types(progress_callback=None):
         if progress_callback:
             progress_callback(50, "Cargando tipos de entidad...")
 
-        query = """
+        # Usar entidades configuradas para este año
+        entities = config["entities"]
+        placeholders = ", ".join([f"'{e}'" for e in entities])
+
+        query = f"""
             SELECT DISTINCT entidad
-            FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/metadata.parquet'
-            WHERE entidad IN ('HOGAR', 'PERSONA', 'VIVIENDA')
+            FROM '{config["urls"]["metadata"]}'
+            WHERE entidad IN ({placeholders})
             ORDER BY entidad
         """
 
@@ -174,17 +226,20 @@ def get_entity_types(progress_callback=None):
         raise Exception(f"Error cargando tipos de entidad: {str(e)}")
 
 
-def get_geographic_codes(geo_level="PROV", progress_callback=None):
+def get_geographic_codes(year="2022", geo_level="PROV", progress_callback=None):
     """Consultar radios.parquet y devolver lista de códigos geográficos disponibles para el nivel (con caché)
 
     Args:
+        year: Año del censo ("2022" o "2010")
         geo_level: Nivel geográfico - "RADIO", "FRACC", "DEPTO", o "PROV"
         progress_callback: Callback opcional para actualizaciones de progreso
 
     Returns:
         Lista de tuplas: (código, etiqueta) para cada unidad geográfica
     """
-    cache_key = f"geo_codes_{geo_level}"
+    cache_key = f"geo_codes_{year}_{geo_level}"
+    config = CENSUS_CONFIG[year]
+    census_url = config["urls"]["census"]
 
     # Check cache first
     cached = get_cached_data(cache_key)
@@ -203,34 +258,34 @@ def get_geographic_codes(geo_level="PROV", progress_callback=None):
         if progress_callback:
             progress_callback(50, f"Cargando códigos de {geo_level}...")
 
-        # Define queries based on geographic level
+        # Define queries based on geographic level (usando URL dinámica)
         geo_queries = {
-            "PROV": """
+            "PROV": f"""
                 SELECT DISTINCT
                     c.valor_provincia as code,
                     c.etiqueta_provincia as label
-                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
+                FROM '{census_url}' c
                 ORDER BY c.valor_provincia
             """,
-            "DEPTO": """
+            "DEPTO": f"""
                 SELECT DISTINCT
                     c.valor_provincia || '-' || c.valor_departamento as code,
                     c.etiqueta_provincia || ' - ' || c.etiqueta_departamento as label
-                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
+                FROM '{census_url}' c
                 ORDER BY c.valor_provincia, c.valor_departamento
             """,
-            "FRACC": """
+            "FRACC": f"""
                 SELECT DISTINCT
                     c.valor_provincia || '-' || c.valor_departamento || '-' || c.valor_fraccion as code,
                     c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Fracc ' || c.valor_fraccion as label
-                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
+                FROM '{census_url}' c
                 ORDER BY c.valor_provincia, c.valor_departamento, c.valor_fraccion
             """,
-            "RADIO": """
+            "RADIO": f"""
                 SELECT DISTINCT
                     c.id_geo as code,
                     c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Radio ' || c.valor_radio as label
-                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
+                FROM '{census_url}' c
                 ORDER BY c.valor_provincia, c.valor_departamento, c.valor_fraccion, c.valor_radio
             """,
         }
@@ -252,12 +307,13 @@ def get_geographic_codes(geo_level="PROV", progress_callback=None):
         raise Exception(f"Error cargando códigos geográficos: {str(e)}")
 
 
-def preload_all_metadata(progress_callback=None):
+def preload_all_metadata(year="2022", progress_callback=None):
     """
     Cargar el archivo metadata.parquet completo una vez y cachear todas las categorías de variables.
     Esto hace que las búsquedas de categorías posteriores sean instantáneas. El archivo es solo ~1MB.
 
     Args:
+        year: Año del censo ("2022" o "2010")
         progress_callback: Callback opcional(porcentaje, mensaje) para actualizaciones de progreso
 
     Returns:
@@ -269,27 +325,31 @@ def preload_all_metadata(progress_callback=None):
             }
         }
     """
-    cache_key = "all_metadata"
+    cache_key = f"all_metadata_{year}"
+    config = CENSUS_CONFIG[year]
+    metadata_url = config["urls"]["metadata"]
 
     # Check if already cached
     cached = get_cached_data(cache_key)
     if cached is not None:
+        if progress_callback:
+            progress_callback(100, f"Metadatos {year} cargados desde caché")
         return cached
 
     if progress_callback:
-        progress_callback(5, "Cargando metadatos completos...")
+        progress_callback(5, f"Cargando metadatos del censo {year}...")
 
     try:
         con = _connection_pool.get_connection(load_extensions=True)
 
         # Load entire metadata file - it's small (~1MB)
         # Don't cast to INTEGER since some categories are text (e.g., "12 de Octubre")
-        query = """
+        query = f"""
             SELECT
                 codigo_variable,
                 valor_categoria,
                 etiqueta_categoria
-            FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/metadata.parquet'
+            FROM '{metadata_url}'
             ORDER BY codigo_variable, valor_categoria
         """
 
@@ -316,7 +376,7 @@ def preload_all_metadata(progress_callback=None):
         save_cached_data(cache_key, metadata_map)
 
         if progress_callback:
-            progress_callback(100, f"Metadatos cargados: {len(metadata_map)} variables")
+            progress_callback(100, f"Metadatos {year} cargados: {len(metadata_map)} variables")
 
         return metadata_map
 
@@ -324,12 +384,13 @@ def preload_all_metadata(progress_callback=None):
         raise Exception(f"Error al precargar metadatos: {str(e)}")
 
 
-def get_variable_categories(variable_code, progress_callback=None, retry_count=3):
+def get_variable_categories(year="2022", variable_code=None, progress_callback=None, retry_count=3):
     """
     Obtener categorías para una variable del caché de metadatos precargados.
     Recurre a consulta individual si la precarga aún no ha ocurrido.
 
     Args:
+        year: Año del censo ("2022" o "2010")
         variable_code: Código de variable simple string (ej., 'EDUCACION')
         progress_callback: Callback opcional(porcentaje, mensaje) para actualizaciones de progreso
         retry_count: Número de intentos de reintento en caso de fallo (predeterminado 3)
@@ -344,13 +405,16 @@ def get_variable_categories(variable_code, progress_callback=None, retry_count=3
             'has_nulls': True
         }
     """
+    config = CENSUS_CONFIG[year]
+    metadata_url = config["urls"]["metadata"]
+
     # Try to get from preloaded metadata first
-    all_metadata = get_cached_data("all_metadata")
+    all_metadata = get_cached_data(f"all_metadata_{year}")
     if all_metadata and variable_code in all_metadata:
         return all_metadata[variable_code]
 
     # Fallback: individual cache check
-    cache_key = f"categories_{variable_code}"
+    cache_key = f"categories_{year}_{variable_code}"
     cached = get_cached_data(cache_key)
     if cached is not None:
         return cached
@@ -363,11 +427,11 @@ def get_variable_categories(variable_code, progress_callback=None, retry_count=3
         try:
             con = _connection_pool.get_connection(load_extensions=True)
 
-            query_categories = """
+            query_categories = f"""
                 SELECT DISTINCT
                     valor_categoria,
                     etiqueta_categoria
-                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/metadata.parquet'
+                FROM '{metadata_url}'
                 WHERE codigo_variable = ?
                   AND valor_categoria IS NOT NULL
                 ORDER BY CAST(valor_categoria AS INTEGER)
@@ -376,9 +440,9 @@ def get_variable_categories(variable_code, progress_callback=None, retry_count=3
             result = con.execute(query_categories, [variable_code]).fetchall()
             categories = [(str(row[0]), str(row[1])) for row in result]
 
-            query_nulls = """
+            query_nulls = f"""
                 SELECT COUNT(*) as null_count
-                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/metadata.parquet'
+                FROM '{metadata_url}'
                 WHERE codigo_variable = ?
                   AND valor_categoria IS NULL
             """
@@ -405,9 +469,20 @@ def get_variable_categories(variable_code, progress_callback=None, retry_count=3
                 )
 
 
-def get_variables(entity_type=None, progress_callback=None):
-    """Consultar metadata.parquet y devolver lista de (codigo_variable, etiqueta_variable) para tipo de entidad (con caché)"""
-    cache_key = f"variables_{entity_type if entity_type else 'all'}"
+def get_variables(year="2022", entity_type=None, progress_callback=None):
+    """Consultar metadata.parquet y devolver lista de (codigo_variable, etiqueta_variable) para tipo de entidad (con caché)
+
+    Args:
+        year: Año del censo ("2022" o "2010")
+        entity_type: Tipo de entidad (HOGAR, PERSONA, VIVIENDA) o None para todas
+        progress_callback: Callback opcional para actualizaciones de progreso
+
+    Returns:
+        Lista de tuplas (codigo_variable, etiqueta_variable)
+    """
+    cache_key = f"variables_{year}_{entity_type if entity_type else 'all'}"
+    config = CENSUS_CONFIG[year]
+    metadata_url = config["urls"]["metadata"]
 
     # Check cache first
     cached = get_cached_data(cache_key)
@@ -427,17 +502,17 @@ def get_variables(entity_type=None, progress_callback=None):
             progress_callback(30, "Cargando metadatos de variables...")
 
         if entity_type:
-            query = """
+            query = f"""
                 SELECT DISTINCT codigo_variable, etiqueta_variable
-                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/metadata.parquet'
+                FROM '{metadata_url}'
                 WHERE entidad = ?
                 ORDER BY codigo_variable
             """
             result = con.execute(query, [entity_type]).fetchall()
         else:
-            query = """
+            query = f"""
                 SELECT DISTINCT codigo_variable, etiqueta_variable
-                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/metadata.parquet'
+                FROM '{metadata_url}'
                 ORDER BY codigo_variable
             """
             result = con.execute(query).fetchall()
@@ -457,20 +532,23 @@ def get_variables(entity_type=None, progress_callback=None):
         raise Exception(f"Error cargando variables: {str(e)}")
 
 
-def calculate_column_count(variable_codes, selected_categories=None):
+def calculate_column_count(year="2022", variable_codes=None, selected_categories=None):
     """Calcular el número total de columnas que se generarán.
 
     Args:
+        year: Año del censo ("2022" o "2010")
         variable_codes: Lista de códigos de variables
         selected_categories: Dict opcional mapeando var_code a lista de categorías seleccionadas
 
     Returns:
         int: Número total de columnas que se generarán
     """
+    if variable_codes is None:
+        variable_codes = []
     if isinstance(variable_codes, str):
         variable_codes = [variable_codes]
 
-    metadata_map = preload_all_metadata()
+    metadata_map = preload_all_metadata(year=year)
     total_columns = 0
 
     for var_code in variable_codes:
@@ -495,7 +573,8 @@ def calculate_column_count(variable_codes, selected_categories=None):
 
 
 def load_census_layer(
-    variable_codes,
+    year="2022",
+    variable_codes=None,
     geo_level="RADIO",
     geo_filters=None,
     bbox=None,
@@ -505,6 +584,7 @@ def load_census_layer(
     """Ejecutar join en DuckDB y devolver QgsVectorLayer con datos del censo para múltiples variables.
 
     Args:
+        year: Año del censo ("2022" o "2010")
         variable_codes: Lista de códigos de variables del censo (o código único como string)
         geo_level: Nivel geográfico - "RADIO", "FRACC", "DEPTO", o "PROV"
         geo_filters: Lista opcional de códigos geográficos para filtrar
@@ -521,8 +601,16 @@ def load_census_layer(
         Exception: Si la consulta falla
     """
     # Allow single variable as string
+    if variable_codes is None:
+        variable_codes = []
     if isinstance(variable_codes, str):
         variable_codes = [variable_codes]
+
+    # Obtener configuración para el año
+    config = CENSUS_CONFIG[year]
+    geo_id_col = config["geo_id_column"]
+    radios_url = config["urls"]["radios"]
+    census_url = config["urls"]["census"]
 
     try:
         if progress_callback:
@@ -545,7 +633,9 @@ def load_census_layer(
 
         for idx, var_code in enumerate(variable_codes):
             try:
-                result = get_variable_categories(var_code, progress_callback=progress_callback)
+                result = get_variable_categories(
+                    year=year, variable_code=var_code, progress_callback=progress_callback
+                )
 
                 # Filter categories based on selected_categories if provided
                 if selected_categories and var_code in selected_categories:
@@ -606,10 +696,11 @@ def load_census_layer(
             )
 
         # Define grouping columns and ID fields based on geographic level
-        geo_config = {
+        # Usar columna de ID dinámica según el año
+        geo_config_map = {
             "RADIO": {
                 "group_cols": "PROV, DEPTO, FRACC, RADIO",
-                "id_field": "COD_2022",
+                "id_field": geo_id_col,
                 "id_alias": "geo_id",
                 "dissolve": False,
             },
@@ -633,10 +724,10 @@ def load_census_layer(
             },
         }
 
-        config = geo_config[geo_level]
+        geo_config_level = geo_config_map[geo_level]
 
         # PHASE 4.3: Build filters using query_builders functions
-        geo_filter, geo_params = build_geo_filter(geo_level, geo_filters)
+        geo_filter, geo_params = build_geo_filter(geo_level, geo_filters, geo_id_col=geo_id_col)
         spatial_filter = build_spatial_filter(bbox)
 
         # PHASE 4.4: Build CTE-based query (FIXES CARTESIAN PRODUCT BUG)
@@ -659,7 +750,7 @@ def load_census_layer(
         # Step 5: Build CTE that pivots census data FIRST (prevents cartesian product)
         # This is the critical fix - we aggregate census data at radio level in a CTE,
         # THEN join 1:1 with geometry. Old approach joined first, causing row multiplication.
-        if config["dissolve"]:
+        if geo_config_level["dissolve"]:
             # For dissolved geometries: CTE aggregates to target level, then joins
             # Build SUM aggregations for all pivoted columns
             sum_columns = ", ".join([f'SUM(cp."{col}") as "{col}"' for col in column_names])
@@ -669,20 +760,20 @@ def load_census_layer(
                     SELECT
                         r.PROV, r.DEPTO, r.FRACC, r.RADIO,
                         {pivot_sql}
-                    FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet' r
-                    LEFT JOIN 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
-                        ON r.COD_2022 = c.id_geo AND {census_where_clause}
+                    FROM '{radios_url}' r
+                    LEFT JOIN '{census_url}' c
+                        ON r.{geo_id_col} = c.id_geo AND {census_where_clause}
                     GROUP BY r.PROV, r.DEPTO, r.FRACC, r.RADIO
                 )
                 SELECT
-                    {config["id_field"]} as geo_id,
+                    {geo_config_level["id_field"]} as geo_id,
                     ST_AsText(ST_MemUnion_Agg(g.geometry)) as wkt,
                     {sum_columns}
-                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet' g
+                FROM '{radios_url}' g
                 JOIN census_pivoted cp
                     ON g.PROV = cp.PROV AND g.DEPTO = cp.DEPTO AND g.FRACC = cp.FRACC AND g.RADIO = cp.RADIO
                 WHERE 1=1 {geo_filter} {spatial_filter}
-                GROUP BY {config["group_cols"]}
+                GROUP BY {geo_config_level["group_cols"]}
             """
         else:
             # For RADIO level: CTE pivots at radio level, simple 1:1 join
@@ -692,19 +783,19 @@ def load_census_layer(
             query = f"""
                 WITH census_pivoted AS (
                     SELECT
-                        r.COD_2022,
+                        r.{geo_id_col},
                         {pivot_sql}
-                    FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet' r
-                    LEFT JOIN 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet' c
-                        ON r.COD_2022 = c.id_geo AND {census_where_clause}
-                    GROUP BY r.COD_2022
+                    FROM '{radios_url}' r
+                    LEFT JOIN '{census_url}' c
+                        ON r.{geo_id_col} = c.id_geo AND {census_where_clause}
+                    GROUP BY r.{geo_id_col}
                 )
                 SELECT
-                    g.{config["id_field"]} as geo_id,
+                    g.{geo_config_level["id_field"]} as geo_id,
                     ST_AsText(g.geometry) as wkt,
                     {select_columns}
-                FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet' g
-                JOIN census_pivoted cp ON g.{config["id_field"]} = cp.COD_2022
+                FROM '{radios_url}' g
+                JOIN census_pivoted cp ON g.{geo_config_level["id_field"]} = cp.{geo_id_col}
                 WHERE 1=1 {geo_filter} {spatial_filter}
             """
 
@@ -788,11 +879,11 @@ def load_census_layer(
         if progress_callback:
             progress_callback(70, "Creando capa...")
 
-        # Create layer name with variable list
+        # Create layer name with variable list and year
         if len(variable_codes) == 1:
-            layer_name = f"Censo - {variable_codes[0]} ({geo_level})"
+            layer_name = f"Censo {year} - {variable_codes[0]} ({geo_level})"
         else:
-            layer_name = f"Censo - {len(variable_codes)} variables ({geo_level})"
+            layer_name = f"Censo {year} - {len(variable_codes)} variables ({geo_level})"
 
         layer = QgsVectorLayer("Polygon?crs=EPSG:4326", layer_name, "memory")
         provider = layer.dataProvider()
@@ -873,17 +964,24 @@ def load_census_layer(
         raise Exception(f"Error cargando capa censal: {str(e)}")
 
 
-def run_custom_query(sql, progress_callback=None):
+def run_custom_query(sql, year="2022", progress_callback=None):
     """Ejecutar SQL arbitrario contra datos del censo, devolver QgsVectorLayer o result tuple
 
+    Args:
+        sql: Consulta SQL a ejecutar
+        year: Año del censo ("2022" o "2010")
+        progress_callback: Callback opcional para actualizaciones de progreso
+
     Tablas disponibles:
-        radios    → geometry + COD_2022, PROV, DEPTO, FRACC, RADIO
+        radios    → geometry + COD_2022/COD_2010, PROV, DEPTO, FRACC, RADIO
         census    → id_geo, codigo_variable, conteo, valor_provincia, etc.
         metadata  → codigo_variable, etiqueta_variable, entidad
 
     Returns:
         (result, error) donde result es QgsVectorLayer, (columns, rows), o None
     """
+    config = CENSUS_CONFIG[year]
+
     try:
         if progress_callback:
             progress_callback(10, "Conectando a fuente de datos...")
@@ -891,12 +989,17 @@ def run_custom_query(sql, progress_callback=None):
         con = _connection_pool.get_connection(load_extensions=True)
 
         if progress_callback:
-            progress_callback(20, "Creando vistas de tablas...")
+            progress_callback(20, f"Creando vistas de tablas para censo {year}...")
 
-        con.execute("""
-            CREATE VIEW radios AS SELECT * FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/radios.parquet';
-            CREATE VIEW census AS SELECT * FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/census-data.parquet';
-            CREATE VIEW metadata AS SELECT * FROM 'https://data.source.coop/nlebovits/censo-argentino/2022/metadata.parquet';
+        # Drop views if they exist (in case year changed)
+        con.execute(
+            "DROP VIEW IF EXISTS radios; DROP VIEW IF EXISTS census; DROP VIEW IF EXISTS metadata;"
+        )
+
+        con.execute(f"""
+            CREATE VIEW radios AS SELECT * FROM '{config["urls"]["radios"]}';
+            CREATE VIEW census AS SELECT * FROM '{config["urls"]["census"]}';
+            CREATE VIEW metadata AS SELECT * FROM '{config["urls"]["metadata"]}';
         """)
 
         if progress_callback:

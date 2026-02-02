@@ -33,6 +33,8 @@ Si necesitas instalar una versión específica, puedes descargar el archivo ZIP 
 
 **Nota sobre dependencias:** El plugin requiere el paquete Python `duckdb`. **Recomendación:** Instala primero el plugin [QDuckDB](https://plugins.qgis.org/plugins/qduckdb/) y actívalo antes de instalar Censo Argentino, esto evita problemas con `pip install duckdb`. Si encuentras errores, consulta la [Guía de Solución de Problemas](https://nlebovits.github.io/censo-argentino-qgis/solucion-problemas/#error-modulo-duckdb-no-encontrado).
 
+**Nota sobre rendimiento:** La primera vez que uses el plugin, tardará 5-15 segundos en cargar metadatos del censo (variables, categorías, códigos geográficos). Estos datos se cachean localmente y en usos posteriores todo carga instantáneamente. Ver más en [Rendimiento y Caché](https://nlebovits.github.io/censo-argentino-qgis/solucion-problemas/#rendimiento-y-tiempos-de-carga).
+
 ## Demo
 
 ![Demo del plugin](docs/imgs/ejemplo.gif)

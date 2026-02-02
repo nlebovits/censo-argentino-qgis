@@ -42,6 +42,10 @@ rm -rf ~/.cache/qgis-censo-argentino/
 
 El caché se regenera automáticamente en el próximo uso.
 
+## Carga lenta la primera vez
+
+La primera vez que cargues un campo, tiene que descargarse y cachearse localmente. Esto toma aproximadamente un minuto o menos. Después de eso, debería cargar casi instantáneamente.
+
 ## Ver logs detallados
 
 **Ver → Paneles → Mensajes de registro → "Censo Argentino"**
