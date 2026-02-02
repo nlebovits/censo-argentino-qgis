@@ -77,7 +77,7 @@ class TestBuildGeoFilter:
         assert params == ["02", "007", "01"]
 
     def test_builds_radio_filter_single(self):
-        """Should build RADIO filter using COD_2022."""
+        """Should build RADIO filter using COD_2022 by default."""
         filter_sql, params = build_geo_filter("RADIO", ["020070101"])
         assert "COD_2022 IN (?)" in filter_sql
         assert params == ["020070101"]
@@ -87,6 +87,20 @@ class TestBuildGeoFilter:
         filter_sql, params = build_geo_filter("RADIO", ["020070101", "060140201"])
         assert "COD_2022 IN (?, ?)" in filter_sql
         assert params == ["020070101", "060140201"]
+
+    def test_builds_radio_filter_with_cod_2010(self):
+        """Should build RADIO filter using COD_2010 when specified."""
+        filter_sql, params = build_geo_filter("RADIO", ["020010101"], geo_id_col="COD_2010")
+        assert "COD_2010 IN (?)" in filter_sql
+        assert params == ["020010101"]
+
+    def test_builds_radio_filter_custom_geo_id_col(self):
+        """Should support custom geo_id_col parameter."""
+        filter_sql, params = build_geo_filter(
+            "RADIO", ["123456789", "987654321"], geo_id_col="COD_2010"
+        )
+        assert "COD_2010 IN (?, ?)" in filter_sql
+        assert params == ["123456789", "987654321"]
 
     def test_sql_injection_safety_prov(self):
         """Should safely handle potential SQL injection in PROV filters."""

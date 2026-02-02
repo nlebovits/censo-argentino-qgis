@@ -1,13 +1,14 @@
 """Funciones de construcción de consultas extraídas de query.py para facilitar pruebas."""
 
 
-def build_geo_filter(geo_level, geo_filters):
+def build_geo_filter(geo_level, geo_filters, geo_id_col="COD_2022"):
     """
     Construir fragmento SQL de filtro geográfico y parámetros de consulta.
 
     Args:
         geo_level: Nivel geográfico ('PROV', 'DEPTO', 'FRACC', 'RADIO')
         geo_filters: Lista de códigos de filtro geográfico
+        geo_id_col: Nombre de la columna de ID geográfico (COD_2022 o COD_2010)
 
     Returns:
         tuple: (fragmento_sql_filtro, lista_parámetros)
@@ -49,7 +50,7 @@ def build_geo_filter(geo_level, geo_filters):
 
     elif geo_level == "RADIO":
         placeholders = ", ".join(["?" for _ in geo_filters])
-        geo_filter = f" AND COD_2022 IN ({placeholders})"
+        geo_filter = f" AND {geo_id_col} IN ({placeholders})"
         query_params.extend(geo_filters)
 
     return geo_filter, query_params
