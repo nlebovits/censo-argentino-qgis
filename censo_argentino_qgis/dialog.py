@@ -4,7 +4,7 @@ from datetime import datetime
 from qgis.core import Qgis, QgsMessageLog, QgsProject, QgsVectorLayer
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import QCoreApplication, Qt, QThread, QTimer, pyqtSignal
-from qgis.PyQt.QtGui import QFont
+from qgis.PyQt.QtGui import QFont, QIcon
 from qgis.utils import iface
 
 from .config import AVAILABLE_YEARS
@@ -124,6 +124,9 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.progressBar.hide()
         self.lblStatus.hide()
 
+        # Set icons for help buttons
+        self.setup_help_button_icons()
+
         # Initialize category section (collapsed by default)
         self.groupBoxCategories.setChecked(False)
 
@@ -155,6 +158,17 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
 
         # Load initial data asynchronously
         self.load_data_async()
+
+    def setup_help_button_icons(self):
+        """Configure icons for help buttons using QGIS built-in icons"""
+        # Documentation button - use help/info icon
+        self.btnDocs.setIcon(QIcon.fromTheme("help-contents"))
+
+        # Troubleshooting button - use tools/wrench icon
+        self.btnTroubleshooting.setIcon(QIcon.fromTheme("tools-report-bug"))
+
+        # Report bug button - use bug icon
+        self.btnReportBug.setIcon(QIcon.fromTheme("tools-report-bug"))
 
     def init_year_combo(self):
         """Initialize year dropdown with available census years"""

@@ -50,39 +50,30 @@
          <item>
           <widget class="QPushButton" name="btnDocs">
            <property name="text">
-            <string>Documentación</string>
+            <string>Ayuda</string>
            </property>
            <property name="toolTip">
             <string>Abrir la documentación completa en el navegador</string>
-           </property>
-           <property name="flat">
-            <bool>true</bool>
            </property>
           </widget>
          </item>
          <item>
           <widget class="QPushButton" name="btnTroubleshooting">
            <property name="text">
-            <string>Solución de Problemas</string>
+            <string>Problemas</string>
            </property>
            <property name="toolTip">
             <string>Ver soluciones a problemas comunes (dependencias, errores, etc.)</string>
-           </property>
-           <property name="flat">
-            <bool>true</bool>
            </property>
           </widget>
          </item>
          <item>
           <widget class="QPushButton" name="btnReportBug">
            <property name="text">
-            <string>Reportar Bug</string>
+            <string>Reportar</string>
            </property>
            <property name="toolTip">
             <string>Abrir un ticket en GitHub para reportar un problema</string>
-           </property>
-           <property name="flat">
-            <bool>true</bool>
            </property>
           </widget>
          </item>
