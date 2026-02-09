@@ -724,7 +724,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             return
 
         # Check for placeholder variables that need replacement
-        from validation import validate_sql_placeholders
+        from .validation import validate_sql_placeholders
 
         placeholders = validate_sql_placeholders(sql)
 
