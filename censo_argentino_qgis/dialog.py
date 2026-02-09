@@ -167,8 +167,9 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         # Troubleshooting button - use tools/wrench icon
         self.btnTroubleshooting.setIcon(QIcon.fromTheme("tools-report-bug"))
 
-        # Report bug button - use bug icon
+        # Report bug button - icon only, no text (maximized icon visibility)
         self.btnReportBug.setIcon(QIcon.fromTheme("tools-report-bug"))
+        self.btnReportBug.setIconSize(self.btnReportBug.iconSize() * 1.2)  # Slightly larger icon
 
     def init_year_combo(self):
         """Initialize year dropdown with available census years"""

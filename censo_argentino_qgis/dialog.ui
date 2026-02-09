@@ -70,10 +70,16 @@
          <item>
           <widget class="QPushButton" name="btnReportBug">
            <property name="text">
-            <string>Reportar</string>
+            <string/>
            </property>
            <property name="toolTip">
-            <string>Abrir un ticket en GitHub para reportar un problema</string>
+            <string>Reportar un bug</string>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>32</width>
+             <height>16777215</height>
+            </size>
            </property>
           </widget>
          </item>
