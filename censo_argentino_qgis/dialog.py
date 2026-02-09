@@ -141,6 +141,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.btnLoad.clicked.connect(self.on_load_clicked)
         self.btnDocs.clicked.connect(self.on_docs_clicked)
         self.btnTroubleshooting.clicked.connect(self.on_troubleshooting_clicked)
+        self.btnReportBug.clicked.connect(self.on_report_bug_clicked)
 
         # Initialize SQL tab
         self.init_sql_tab()
@@ -826,4 +827,14 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         webbrowser.open(docs_url)
         QgsMessageLog.logMessage(
             f"Abriendo solución de problemas: {docs_url}", "Censo Argentino", Qgis.Info
+        )
+
+    def on_report_bug_clicked(self):
+        """Open GitHub issues page to report a bug"""
+        import webbrowser
+
+        issues_url = "https://github.com/nlebovits/censo-argentino-qgis/issues/new"
+        webbrowser.open(issues_url)
+        QgsMessageLog.logMessage(
+            f"Abriendo página de reporte de bugs: {issues_url}", "Censo Argentino", Qgis.Info
         )
