@@ -34,19 +34,16 @@ class TestGeoConfigGroupCols:
 
         # Read the query.py source to verify the config
         query_py_path = Path(__file__).parent.parent / "censo_argentino_qgis" / "query.py"
-        query_source = query_py_path.read_text()
+        query_source = query_py_path.read_text(encoding="utf-8")
 
         # Find the DEPTO config section
         import re
+
         depto_config_match = re.search(
-            r'"DEPTO":\s*\{[^}]*"group_cols":\s*"([^"]+)"',
-            query_source,
-            re.DOTALL
+            r'"DEPTO":\s*\{[^}]*"group_cols":\s*"([^"]+)"', query_source, re.DOTALL
         )
 
-        assert depto_config_match is not None, (
-            "Could not find DEPTO config in query.py"
-        )
+        assert depto_config_match is not None, "Could not find DEPTO config in query.py"
 
         actual_group_cols = depto_config_match.group(1)
 
@@ -62,17 +59,13 @@ class TestGeoConfigGroupCols:
         expected_group_cols = "g.PROV, g.DEPTO, g.FRACC"
 
         query_py_path = Path(__file__).parent.parent / "censo_argentino_qgis" / "query.py"
-        query_source = query_py_path.read_text()
+        query_source = query_py_path.read_text(encoding="utf-8")
 
         fracc_config_match = re.search(
-            r'"FRACC":\s*\{[^}]*"group_cols":\s*"([^"]+)"',
-            query_source,
-            re.DOTALL
+            r'"FRACC":\s*\{[^}]*"group_cols":\s*"([^"]+)"', query_source, re.DOTALL
         )
 
-        assert fracc_config_match is not None, (
-            "Could not find FRACC config in query.py"
-        )
+        assert fracc_config_match is not None, "Could not find FRACC config in query.py"
 
         actual_group_cols = fracc_config_match.group(1)
 
@@ -86,17 +79,13 @@ class TestGeoConfigGroupCols:
         expected_group_cols = "g.PROV"
 
         query_py_path = Path(__file__).parent.parent / "censo_argentino_qgis" / "query.py"
-        query_source = query_py_path.read_text()
+        query_source = query_py_path.read_text(encoding="utf-8")
 
         prov_config_match = re.search(
-            r'"PROV":\s*\{[^}]*"group_cols":\s*"([^"]+)"',
-            query_source,
-            re.DOTALL
+            r'"PROV":\s*\{[^}]*"group_cols":\s*"([^"]+)"', query_source, re.DOTALL
         )
 
-        assert prov_config_match is not None, (
-            "Could not find PROV config in query.py"
-        )
+        assert prov_config_match is not None, "Could not find PROV config in query.py"
 
         actual_group_cols = prov_config_match.group(1)
 
@@ -110,17 +99,13 @@ class TestGeoConfigGroupCols:
         expected_id_field = "g.PROV"
 
         query_py_path = Path(__file__).parent.parent / "censo_argentino_qgis" / "query.py"
-        query_source = query_py_path.read_text()
+        query_source = query_py_path.read_text(encoding="utf-8")
 
         prov_config_match = re.search(
-            r'"PROV":\s*\{[^}]*"id_field":\s*"([^"]+)"',
-            query_source,
-            re.DOTALL
+            r'"PROV":\s*\{[^}]*"id_field":\s*"([^"]+)"', query_source, re.DOTALL
         )
 
-        assert prov_config_match is not None, (
-            "Could not find PROV id_field in query.py"
-        )
+        assert prov_config_match is not None, "Could not find PROV id_field in query.py"
 
         actual_id_field = prov_config_match.group(1)
 
@@ -135,17 +120,13 @@ class TestGeoConfigGroupCols:
         expected_pattern = r"g\.PROV.*g\.DEPTO"
 
         query_py_path = Path(__file__).parent.parent / "censo_argentino_qgis" / "query.py"
-        query_source = query_py_path.read_text()
+        query_source = query_py_path.read_text(encoding="utf-8")
 
         depto_config_match = re.search(
-            r'"DEPTO":\s*\{[^}]*"id_field":\s*"([^"]+)"',
-            query_source,
-            re.DOTALL
+            r'"DEPTO":\s*\{[^}]*"id_field":\s*"([^"]+)"', query_source, re.DOTALL
         )
 
-        assert depto_config_match is not None, (
-            "Could not find DEPTO id_field in query.py"
-        )
+        assert depto_config_match is not None, "Could not find DEPTO id_field in query.py"
 
         actual_id_field = depto_config_match.group(1)
 
@@ -159,17 +140,13 @@ class TestGeoConfigGroupCols:
         expected_pattern = r"g\.PROV.*g\.DEPTO.*g\.FRACC"
 
         query_py_path = Path(__file__).parent.parent / "censo_argentino_qgis" / "query.py"
-        query_source = query_py_path.read_text()
+        query_source = query_py_path.read_text(encoding="utf-8")
 
         fracc_config_match = re.search(
-            r'"FRACC":\s*\{[^}]*"id_field":\s*"([^"]+)"',
-            query_source,
-            re.DOTALL
+            r'"FRACC":\s*\{[^}]*"id_field":\s*"([^"]+)"', query_source, re.DOTALL
         )
 
-        assert fracc_config_match is not None, (
-            "Could not find FRACC id_field in query.py"
-        )
+        assert fracc_config_match is not None, "Could not find FRACC id_field in query.py"
 
         actual_id_field = fracc_config_match.group(1)
 

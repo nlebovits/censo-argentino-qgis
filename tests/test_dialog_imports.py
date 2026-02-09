@@ -29,14 +29,13 @@ class TestDialogImports:
         """Import of validate_sql_placeholders should use relative import."""
         # Read dialog.py source
         dialog_py_path = Path(__file__).parent.parent / "censo_argentino_qgis" / "dialog.py"
-        dialog_source = dialog_py_path.read_text()
+        dialog_source = dialog_py_path.read_text(encoding="utf-8")
 
         # Find the validation import line
         # Should match: from .validation import validate_sql_placeholders
         # Should NOT match: from validation import validate_sql_placeholders
         import_match = re.search(
-            r'from\s+(\.)?validation\s+import\s+validate_sql_placeholders',
-            dialog_source
+            r"from\s+(\.)?validation\s+import\s+validate_sql_placeholders", dialog_source
         )
 
         assert import_match is not None, (
@@ -56,9 +55,7 @@ class TestDialogImports:
     def test_validation_import_can_be_executed(self):
         """The import should actually work when executed."""
         # This test verifies the import doesn't raise ModuleNotFoundError
-        try:
-            from censo_argentino_qgis.validation import validate_sql_placeholders
-            # If we get here, the import worked
-            assert callable(validate_sql_placeholders)
-        except ModuleNotFoundError as e:
-            pytest.fail(f"Import failed: {e}")
+        from censo_argentino_qgis.validation import validate_sql_placeholders
+
+        # If we get here, the import worked
+        assert callable(validate_sql_placeholders)
