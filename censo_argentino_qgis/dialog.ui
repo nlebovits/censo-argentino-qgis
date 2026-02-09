@@ -50,7 +50,7 @@
          <item>
           <widget class="QPushButton" name="btnDocs">
            <property name="text">
-            <string>Ayuda</string>
+            <string>Docs</string>
            </property>
            <property name="toolTip">
             <string>Abrir la documentación completa en el navegador</string>
@@ -60,7 +60,7 @@
          <item>
           <widget class="QPushButton" name="btnTroubleshooting">
            <property name="text">
-            <string>Problemas</string>
+            <string>Ayuda</string>
            </property>
            <property name="toolTip">
             <string>Ver soluciones a problemas comunes (dependencias, errores, etc.)</string>
