@@ -161,15 +161,14 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def setup_help_button_icons(self):
         """Configure icons for help buttons using QGIS built-in icons"""
-        # Documentation button - use help/info icon
-        self.btnDocs.setIcon(QIcon.fromTheme("help-contents"))
+        # Info button - info icon
+        self.btnDocs.setIcon(QIcon.fromTheme("dialog-information"))
 
-        # Troubleshooting button - use tools/wrench icon
-        self.btnTroubleshooting.setIcon(QIcon.fromTheme("tools-report-bug"))
+        # Ayuda button - question/help icon
+        self.btnTroubleshooting.setIcon(QIcon.fromTheme("help-browser"))
 
-        # Report bug button - icon only, no text (maximized icon visibility)
+        # Bug button - tools-report-bug icon
         self.btnReportBug.setIcon(QIcon.fromTheme("tools-report-bug"))
-        self.btnReportBug.setIconSize(self.btnReportBug.iconSize() * 1.2)  # Slightly larger icon
 
     def init_year_combo(self):
         """Initialize year dropdown with available census years"""

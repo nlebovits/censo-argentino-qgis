@@ -50,7 +50,7 @@
          <item>
           <widget class="QPushButton" name="btnDocs">
            <property name="text">
-            <string>Docs</string>
+            <string>Info</string>
            </property>
            <property name="toolTip">
             <string>Abrir la documentación completa en el navegador</string>
@@ -70,16 +70,10 @@
          <item>
           <widget class="QPushButton" name="btnReportBug">
            <property name="text">
-            <string/>
+            <string>Bug</string>
            </property>
            <property name="toolTip">
             <string>Reportar un bug</string>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>32</width>
-             <height>16777215</height>
-            </size>
            </property>
           </widget>
          </item>
