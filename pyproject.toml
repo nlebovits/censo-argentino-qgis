@@ -46,6 +46,14 @@ ignore = [
 "__init__.py" = ["F401"]  # Allow unused imports in __init__.py
 "tests/*.py" = ["B011"]   # Allow assert False in tests
 
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "venv"]
+skips = [
+    "B101",  # assert en producción (usado para validación)
+    "B110",  # try-except-pass (usado para cleanup de archivos temporales)
+    "B608",  # SQL injection - falso positivo, URLs vienen de config no de usuario
+]
+
 # Este es un plugin de QGIS, no un paquete Python
 # La documentación se construye con MkDocs como herramienta uv:
 #   uv tool install mkdocs --with mkdocs-material --with pymdown-extensions

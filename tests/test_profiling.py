@@ -10,8 +10,6 @@ Para benchmarks locales detallados (requiere conexión a internet):
     .venv/bin/pytest tests/test_profiling.py -v -s --run-benchmarks
 """
 
-import pytest
-
 from censo_argentino_qgis.query import (
     DUCKDB_MEMORY_LIMIT,
     MAX_COLUMNS,

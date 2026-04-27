@@ -9,6 +9,7 @@ on:
 
 jobs:
   lint:
+    name: Lint y Formato
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -19,8 +20,7 @@ jobs:
           python-version: '3.11'
 
       - name: Instalar dependencias
-        run: |
-          pip install -r requirements-dev.txt
+        run: pip install -r requirements-dev.txt
 
       - name: Verificar formato del código
         run: ruff format --check .
@@ -28,13 +28,59 @@ jobs:
       - name: Ejecutar linter
         run: ruff check .
 
+  security:
+    name: Seguridad
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+
+      - name: Escaneo de seguridad con Bandit
+        run: bandit -r censo_argentino_qgis -c pyproject.toml
+
+      - name: Auditar dependencias
+        run: pip-audit
+
+  dead-code:
+    name: Código Muerto y Complejidad
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+
+      - name: Verificar código muerto
+        run: vulture censo_argentino_qgis tests vulture_whitelist.py --min-confidence 80
+
+      - name: Verificar complejidad
+        run: xenon --max-absolute=F --max-modules=C --max-average=B censo_argentino_qgis
+
   test:
+    name: Test (Python ${{ matrix.python-version }} / ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ['3.9', '3.10', '3.11', '3.12']
+        exclude:
+          - os: macos-latest
+            python-version: '3.9'
+          - os: windows-latest
+            python-version: '3.9'
     steps:
       - uses: actions/checkout@v6
 
@@ -44,15 +90,14 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Instalar dependencias
-        run: |
-          pip install -r requirements-dev.txt
+        run: pip install -r requirements-dev.txt
 
       - name: Pre-instalar extensiones de DuckDB
         run: |
           python -c "import duckdb; con = duckdb.connect(); con.execute('INSTALL spatial'); con.execute('INSTALL httpfs')"
 
       - name: Ejecutar tests con pytest
-        run: pytest -v --tb=short --cov=. --cov-report=term-missing --cov-report=xml
+        run: pytest tests/ -v --tb=short --cov=. --cov-report=term-missing --cov-report=xml
 
       - name: Subir cobertura a Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'

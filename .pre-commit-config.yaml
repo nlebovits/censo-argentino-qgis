@@ -1,7 +1,45 @@
+# Pre-commit hooks para censo-argentino-qgis
+# Instalar: pip install pre-commit && pre-commit install
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+      - id: check-toml
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.9.6"
+    rev: v0.9.6
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
+
+  - repo: https://github.com/jendrikseipp/vulture
+    rev: v2.14
+    hooks:
+      - id: vulture
+        args: [
+          censo_argentino_qgis,
+          tests,
+          vulture_whitelist.py,
+          --min-confidence, '80',
+        ]
+
+  - repo: https://github.com/rubik/xenon
+    rev: v0.9.3
+    hooks:
+      - id: xenon
+        # Thresholds relajados por código legado (load_census_layer es F)
+        # TODO: Refactorizar y ajustar a --max-absolute=C
+        args: [
+          '--max-absolute=F',
+          '--max-modules=C',
+          '--max-average=B',
+          'censo_argentino_qgis/',
+        ]
+        pass_filenames: false

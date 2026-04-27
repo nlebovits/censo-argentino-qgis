@@ -78,13 +78,15 @@ class TestMemoryBenchmarks:
         filtered_count = duckdb_connection.execute(
             f"""
             SELECT COUNT(*)
-            FROM '{census_urls['radios']}'
+            FROM '{census_urls["radios"]}'
             WHERE ST_Intersects(geometry, ST_GeomFromText('{PERGAMINO_BBOX}'))
             """
         ).fetchone()[0]
 
         reduction = (1 - filtered_count / all_count) * 100
-        print(f"\n  Total: {all_count:,}, Filtered: {filtered_count:,}, Reduction: {reduction:.1f}%")
+        print(
+            f"\n  Total: {all_count:,}, Filtered: {filtered_count:,}, Reduction: {reduction:.1f}%"
+        )
 
         assert filtered_count < all_count * 0.1, "Bbox pequeño debe filtrar >90% de radios"
 
@@ -96,7 +98,7 @@ class TestMemoryBenchmarks:
         query = f"""
             WITH filtered_radios AS (
                 SELECT COD_2022, geometry
-                FROM '{census_urls['radios']}'
+                FROM '{census_urls["radios"]}'
                 WHERE ST_Intersects(geometry, ST_GeomFromText('{PERGAMINO_BBOX}'))
             ),
             census_pivoted AS (
@@ -107,7 +109,7 @@ class TestMemoryBenchmarks:
                     SUM(CASE WHEN codigo_variable = 'PERSONA_SEXO' AND valor_categoria = '2'
                         THEN conteo ELSE 0 END) as mujer
                 FROM filtered_radios r
-                LEFT JOIN '{census_urls['census']}' c
+                LEFT JOIN '{census_urls["census"]}' c
                     ON r.COD_2022 = c.id_geo AND codigo_variable = 'PERSONA_SEXO'
                 GROUP BY r.COD_2022
             )
@@ -141,7 +143,7 @@ class TestQueryPerformance:
         result = duckdb_connection.execute(
             f"""
             SELECT c.id_geo, SUM(c.conteo) as total
-            FROM '{census_urls['census']}' c
+            FROM '{census_urls["census"]}' c
             WHERE c.codigo_variable = 'PERSONA_SEXO'
             GROUP BY c.id_geo
             """
@@ -162,7 +164,7 @@ class TestQueryPerformance:
             SELECT
                 PROV || '-' || DEPTO as depto_id,
                 ST_AsText(ST_MemUnion_Agg(geometry)) as wkt
-            FROM '{census_urls['radios']}'
+            FROM '{census_urls["radios"]}'
             WHERE ST_Intersects(geometry, ST_GeomFromText('{PERGAMINO_BBOX}'))
             GROUP BY PROV, DEPTO
             """
