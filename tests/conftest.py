@@ -7,6 +7,17 @@ from unittest.mock import MagicMock
 
 import pytest
 
+
+def pytest_addoption(parser):
+    """Agregar opciones personalizadas de pytest."""
+    parser.addoption(
+        "--run-benchmarks",
+        action="store_true",
+        default=False,
+        help="Ejecutar benchmarks de rendimiento (requiere conexión a internet)",
+    )
+
+
 # Mock QGIS modules before any imports
 sys.modules["qgis"] = MagicMock()
 sys.modules["qgis.core"] = MagicMock()

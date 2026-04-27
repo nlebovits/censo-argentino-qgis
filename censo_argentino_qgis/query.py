@@ -10,6 +10,10 @@ from qgis.PyQt.QtCore import QVariant
 
 from .config import CENSUS_CONFIG
 
+# Límites de seguridad para prevenir uso excesivo de memoria
+MAX_COLUMNS = 500  # Límite duro de columnas por consulta
+DUCKDB_MEMORY_LIMIT = "4GB"  # Límite de memoria para DuckDB
+
 
 class DuckDBConnectionPool:
     """Pool de conexiones singleton para DuckDB para evitar configuración repetida de conexión/extensiones"""
@@ -31,6 +35,8 @@ class DuckDBConnectionPool:
         if load_extensions and not self._extensions_loaded:
             self._connection.execute("INSTALL httpfs; LOAD httpfs;")
             self._connection.execute("INSTALL spatial; LOAD spatial;")
+            # Limitar memoria para prevenir consumo excesivo
+            self._connection.execute(f"SET memory_limit = '{DUCKDB_MEMORY_LIMIT}'")
             self._extensions_loaded = True
 
         return self._connection
@@ -681,6 +687,13 @@ def load_census_layer(
                 # Regular categories + optional NULL column + total column
                 total_columns += len(categories) + (1 if has_nulls else 0) + 1
 
+        # Validar límite duro de columnas
+        if total_columns > MAX_COLUMNS:
+            raise Exception(
+                f"La consulta generaría {total_columns} columnas, excediendo el límite de {MAX_COLUMNS}. "
+                f"Seleccione menos variables o filtre categorías."
+            )
+
         # Log column count for monitoring
         from qgis.core import Qgis, QgsMessageLog
 
@@ -747,20 +760,25 @@ def load_census_layer(
 
         column_names = re.findall(r'as "([^"]+)"', pivot_sql)
 
-        # Step 5: Build CTE that pivots census data FIRST (prevents cartesian product)
-        # This is the critical fix - we aggregate census data at radio level in a CTE,
-        # THEN join 1:1 with geometry. Old approach joined first, causing row multiplication.
+        # Step 5: Build CTE that pivots census data with EARLY spatial filtering
+        # OPTIMIZATION: Filter radios by bbox FIRST to reduce data loaded into memory.
+        # Old approach: CTE loaded ALL radios, then filtered by bbox at the end.
+        # New approach: First CTE filters radios by bbox, then joins only matching data.
         if geo_config_level["dissolve"]:
-            # For dissolved geometries: CTE aggregates to target level, then joins
-            # Build SUM aggregations for all pivoted columns
+            # For dissolved geometries: filter first, then aggregate to target level
             sum_columns = ", ".join([f'SUM(cp."{col}") as "{col}"' for col in column_names])
 
             query = f"""
-                WITH census_pivoted AS (
+                WITH filtered_radios AS (
+                    SELECT {geo_id_col}, PROV, DEPTO, FRACC, RADIO, geometry
+                    FROM '{radios_url}'
+                    WHERE 1=1 {geo_filter} {spatial_filter}
+                ),
+                census_pivoted AS (
                     SELECT
                         r.PROV, r.DEPTO, r.FRACC, r.RADIO,
                         {pivot_sql}
-                    FROM '{radios_url}' r
+                    FROM filtered_radios r
                     LEFT JOIN '{census_url}' c
                         ON r.{geo_id_col} = c.id_geo AND {census_where_clause}
                     GROUP BY r.PROV, r.DEPTO, r.FRACC, r.RADIO
@@ -769,34 +787,36 @@ def load_census_layer(
                     {geo_config_level["id_field"]} as geo_id,
                     ST_AsText(ST_MemUnion_Agg(g.geometry)) as wkt,
                     {sum_columns}
-                FROM '{radios_url}' g
+                FROM filtered_radios g
                 JOIN census_pivoted cp
                     ON g.PROV = cp.PROV AND g.DEPTO = cp.DEPTO AND g.FRACC = cp.FRACC AND g.RADIO = cp.RADIO
-                WHERE 1=1 {geo_filter} {spatial_filter}
                 GROUP BY {geo_config_level["group_cols"]}
             """
         else:
-            # For RADIO level: CTE pivots at radio level, simple 1:1 join
-            # No need to re-aggregate, just select all columns
+            # For RADIO level: filter first, then pivot only matching radios
             select_columns = ", ".join([f'cp."{col}"' for col in column_names])
 
             query = f"""
-                WITH census_pivoted AS (
+                WITH filtered_radios AS (
+                    SELECT {geo_id_col}, geometry
+                    FROM '{radios_url}'
+                    WHERE 1=1 {geo_filter} {spatial_filter}
+                ),
+                census_pivoted AS (
                     SELECT
                         r.{geo_id_col},
                         {pivot_sql}
-                    FROM '{radios_url}' r
+                    FROM filtered_radios r
                     LEFT JOIN '{census_url}' c
                         ON r.{geo_id_col} = c.id_geo AND {census_where_clause}
                     GROUP BY r.{geo_id_col}
                 )
                 SELECT
-                    g.{geo_config_level["id_field"]} as geo_id,
+                    g.{geo_id_col} as geo_id,
                     ST_AsText(g.geometry) as wkt,
                     {select_columns}
-                FROM '{radios_url}' g
-                JOIN census_pivoted cp ON g.{geo_config_level["id_field"]} = cp.{geo_id_col}
-                WHERE 1=1 {geo_filter} {spatial_filter}
+                FROM filtered_radios g
+                JOIN census_pivoted cp ON g.{geo_id_col} = cp.{geo_id_col}
             """
 
         if progress_callback:
