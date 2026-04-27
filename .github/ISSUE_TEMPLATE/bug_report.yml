@@ -1,0 +1,81 @@
+name: Reporte de Bug
+description: Reportar un error o comportamiento inesperado
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por reportar un bug. Por favor proporciona detalles para ayudarnos a reproducirlo.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descripción del Bug
+      description: Descripción clara de lo que salió mal
+      placeholder: "Cuando intento cargar datos de población, el plugin se congela..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Pasos para Reproducir
+      description: Pasos mínimos para reproducir el problema
+      placeholder: |
+        1. Abrir QGIS
+        2. Ir a Plugins > Censo Argentino
+        3. Seleccionar variable "Población total"
+        4. Click en "Cargar"
+        5. Ver error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamiento Esperado
+      description: ¿Qué debería haber pasado?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Comportamiento Actual
+      description: ¿Qué pasó realmente? Incluir mensajes de error.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Entorno
+      description: Detalles del sistema
+      value: |
+        - Sistema operativo: [ej. Ubuntu 22.04, Windows 11, macOS 14]
+        - Versión de QGIS: [ej. 3.34.0]
+        - Versión del plugin: [ver en Administrador de plugins]
+        - RAM disponible: [ej. 16 GB]
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (Opcional)
+      description: Copiar logs de Ver > Paneles > Mensajes de Registro
+      render: shell
+
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: ¿Te gustaría enviar un PR?
+      options:
+        - "No"
+        - "Sí, me gustaría intentarlo"
+        - "Sí, ya estoy trabajando en ello"
+    validations:
+      required: true

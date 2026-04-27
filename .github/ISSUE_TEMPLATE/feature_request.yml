@@ -1,0 +1,57 @@
+name: Solicitud de Funcionalidad
+description: Sugerir una nueva funcionalidad o mejora
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por sugerir una mejora. Ayúdanos a entender tu caso de uso.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema
+      description: ¿Qué problema resuelve esto? ¿Cuál es tu caso de uso?
+      placeholder: "Necesito analizar datos del censo 2010 junto con 2022, pero el plugin no permite..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solución Propuesta
+      description: ¿Cómo debería funcionar? ¿Qué interfaz tendría?
+      placeholder: |
+        - Agregar selector de año censal
+        - Permitir comparar variables entre años
+        - Mostrar cambio porcentual
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas Consideradas
+      description: Otros enfoques que hayas considerado o workarounds actuales
+      placeholder: "Actualmente estoy descargando los datos manualmente y..."
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridad
+      description: ¿Qué tan importante es esto para tu flujo de trabajo?
+      options:
+        - "Sería útil"
+        - "Importante"
+        - "Crítico/bloqueante"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribución
+      options:
+        - label: Estoy dispuesto/a a enviar un PR para esta funcionalidad
+        - label: Puedo ayudar a probar esta funcionalidad

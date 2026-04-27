@@ -1,0 +1,41 @@
+name: Problema de Documentación
+description: Reportar documentación poco clara, incorrecta o faltante
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: dropdown
+    id: docs-type
+    attributes:
+      label: Tipo de Documentación
+      options:
+        - "README"
+        - "Guía de instalación"
+        - "Guía de uso"
+        - "Solución de problemas"
+        - "Otro"
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: Ubicación
+      description: Link a la documentación problemática
+      placeholder: "https://nlebovits.github.io/censo-argentino-qgis/instalacion/"
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: ¿Cuál es el Problema?
+      description: Describe el problema con la documentación actual
+      placeholder: "El ejemplo muestra X, pero debería mostrar Y porque..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Mejora Sugerida
+      description: ¿Cómo debería corregirse?
