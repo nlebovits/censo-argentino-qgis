@@ -17,7 +17,8 @@ jobs:
       - name: Configurar Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Instalar dependencias
         run: pip install -r requirements-dev.txt
@@ -28,6 +29,9 @@ jobs:
       - name: Ejecutar linter
         run: ruff check .
 
+      - name: Verificar ortografía
+        run: codespell censo_argentino_qgis tests
+
   security:
     name: Seguridad
     runs-on: ubuntu-latest
@@ -37,7 +41,8 @@ jobs:
       - name: Configurar Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Instalar dependencias
         run: pip install -r requirements-dev.txt
@@ -46,7 +51,10 @@ jobs:
         run: bandit -r censo_argentino_qgis -c pyproject.toml
 
       - name: Auditar dependencias
-        run: pip-audit
+        run: |
+          # CVE-2026-3219: pip 26.0.1 vulnerability
+          # Remove ignore after 2026-06-01 when upstream fix expected
+          pip-audit --ignore-vuln CVE-2026-3219
 
   dead-code:
     name: Código Muerto y Complejidad
@@ -57,7 +65,8 @@ jobs:
       - name: Configurar Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Instalar dependencias
         run: pip install -r requirements-dev.txt
@@ -68,6 +77,27 @@ jobs:
       - name: Verificar complejidad
         run: xenon --max-absolute=F --max-modules=C --max-average=B censo_argentino_qgis
 
+      - name: Verificar dependencias
+        run: deptry .
+
+  types:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+
+      - name: Verificar tipos con ty
+        run: ty check censo_argentino_qgis || true  # Advertencias por ahora, no bloquea
+
   test:
     name: Test (Python ${{ matrix.python-version }} / ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -75,12 +105,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
         exclude:
           - os: macos-latest
-            python-version: '3.9'
+            python-version: "3.9"
           - os: windows-latest
-            python-version: '3.9'
+            python-version: "3.9"
     steps:
       - uses: actions/checkout@v6
 
@@ -88,6 +118,7 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
+          cache: "pip"
 
       - name: Instalar dependencias
         run: pip install -r requirements-dev.txt
@@ -97,7 +128,7 @@ jobs:
           python -c "import duckdb; con = duckdb.connect(); con.execute('INSTALL spatial'); con.execute('INSTALL httpfs')"
 
       - name: Ejecutar tests con pytest
-        run: pytest tests/ -v --tb=short --cov=. --cov-report=term-missing --cov-report=xml
+        run: pytest tests/ -v --tb=short --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=40
 
       - name: Subir cobertura a Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'

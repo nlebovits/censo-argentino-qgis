@@ -1,6 +1,7 @@
 """Benchmarks de rendimiento para consultas censales.
 
 Estos tests requieren conexión a internet y se ejecutan solo con --run-benchmarks.
+Solo disponible en Linux/macOS (usa módulo 'resource' no disponible en Windows).
 
 Uso:
     .venv/bin/pytest tests/test_benchmarks.py -v -s --run-benchmarks
@@ -11,11 +12,17 @@ Los benchmarks miden:
 - Rendimiento de consultas con múltiples variables
 """
 
-import resource
+import sys
 import time
 
 import duckdb
 import pytest
+
+# resource solo disponible en Unix
+if sys.platform == "win32":
+    pytest.skip("Benchmarks no disponibles en Windows", allow_module_level=True)
+
+import resource
 
 from censo_argentino_qgis.config import CENSUS_CONFIG
 from censo_argentino_qgis.query import DUCKDB_MEMORY_LIMIT

@@ -20,3 +20,11 @@ pip-audit>=2.7.0
 # Calidad de código
 vulture>=2.10
 xenon>=0.9.0
+codespell>=2.2.0
+deptry>=0.12.0
+
+# Type checking
+ty>=0.0.1a1
+
+# Commits convencionales
+commitizen>=3.0.0

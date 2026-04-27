@@ -19,6 +19,17 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
 
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        # Skip Spanish docs and UI files to avoid false positives
+        args: [
+          --skip, ".git,.venv,venv,htmlcov,site,*.parquet,docs/*,CLAUDE.md,*.ui",
+          --ignore-words-list, "datas,accesible,oficial,termine,convencional,comandos,extensiones,funcional,clases,administrar,requiere,instale,visibles,hace,aplicable,falso,autor,ser",
+        ]
+        exclude: ^docs/
+
   - repo: https://github.com/jendrikseipp/vulture
     rev: v2.14
     hooks:
@@ -43,3 +54,9 @@ repos:
           'censo_argentino_qgis/',
         ]
         pass_filenames: false
+
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.1.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]

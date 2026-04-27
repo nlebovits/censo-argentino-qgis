@@ -13,6 +13,9 @@ addopts = [
     "--cov-report=html",
 ]
 
+[tool.coverage.report]
+fail_under = 40  # Umbral mínimo de cobertura (aumentar gradualmente)
+
 [tool.ruff]
 line-length = 100
 target-version = "py39"
@@ -23,6 +26,7 @@ exclude = [
     ".pytest_cache",
     "htmlcov",
     "site",
+    "vulture_whitelist.py",  # Formato especial para vulture
 ]
 
 [tool.ruff.lint]
@@ -53,6 +57,20 @@ skips = [
     "B110",  # try-except-pass (usado para cleanup de archivos temporales)
     "B608",  # SQL injection - falso positivo, URLs vienen de config no de usuario
 ]
+
+[tool.codespell]
+skip = ".git,.venv,venv,htmlcov,site,*.parquet,docs/*,CLAUDE.md,*.ui"
+# Palabras españolas que codespell confunde con inglés
+ignore-words-list = "datas,accesible,oficial,termine,convencional,comandos,extensiones,funcional,clases,administrar,requiere,instale,visibles,hace,aplicable,falso,autor,ser"
+
+[tool.deptry]
+exclude = [".venv", "venv", "tests"]
+ignore = ["DEP002"]  # Permitir dependencias de desarrollo sin uso directo
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "v$version"
+version_scheme = "semver"
 
 # Este es un plugin de QGIS, no un paquete Python
 # La documentación se construye con MkDocs como herramienta uv:
