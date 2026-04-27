@@ -66,6 +66,10 @@ ignore-words-list = "datas,accesible,oficial,termine,convencional,comandos,exten
 [tool.deptry]
 exclude = [".venv", "venv", "tests"]
 ignore = ["DEP002"]  # Permitir dependencias de desarrollo sin uso directo
+[tool.deptry.per_rule_ignores]
+# qgis es provisto por QGIS, no instalado via pip
+# query_builders y query son módulos locales, no dependencias externas
+DEP001 = ["qgis", "query_builders", "query"]
 
 [tool.commitizen]
 name = "cz_conventional_commits"

@@ -101,6 +101,28 @@ from qgis.core import QgsVectorLayer
 from .query_builders import build_pivot_columns
 ```
 
+## Seguridad
+
+### Falsos Positivos de Bandit (B608)
+
+El portal de plugins de QGIS ejecuta Bandit con configuración predeterminada y reporta
+advertencias B608 (SQL injection) en `query.py` y `dialog.py`. **Estos son falsos positivos.**
+
+**Por qué no hay riesgo:**
+- Todas las URLs en f-strings vienen de `CENSUS_CONFIG` (constantes en `config.py`)
+- Los parámetros de usuario se pasan via placeholders `?` con `con.execute(query, params)`
+- No hay concatenación de entrada de usuario en las consultas SQL
+
+**Ejemplo seguro:**
+```python
+# URL viene de config, no de usuario
+census_url = config["urls"]["census"]  # Constante en config.py
+query = f"SELECT * FROM '{census_url}' WHERE id = ?"
+con.execute(query, [user_provided_id])  # Parámetro via placeholder
+```
+
+Nuestro CI local skipa B608 en `pyproject.toml` porque entendemos el contexto.
+
 ## Recursos
 
 - **Repositorio**: https://github.com/nlebovits/censo-argentino-qgis
