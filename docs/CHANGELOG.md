@@ -5,18 +5,17 @@
 ### Agregado
 - **Soporte para Censos 1991 y 2001**: Plugin ahora accede a datos de los 4 censos nacionales (1991, 2001, 2010, 2022)
 - **Cobertura censal completa**: 35+ años de datos censales argentinos disponibles
-- **Optimización de filtro espacial**: Filtro en dos etapas usando columna `bbox` para predicate pushdown
 
 ### Mejorado
-- **Rendimiento de consultas espaciales**: Filtro por bbox antes de ST_Intersects reduce datos cargados
+- **GeoParquet 2.0**: Datos actualizados con tipos GEOMETRY nativos y predicate pushdown automático
 - **Soporte de columna de geometría configurable**: `geom` para 1991/2001, `geometry` para 2010/2022
 - **Documentación actualizada**: README, guía de usuario y ejemplos SQL reflejan los 4 años disponibles
 - **Ejemplos SQL genéricos**: Los ejemplos ahora usan placeholder `COD_XXXX` en lugar de COALESCE hardcodeado
 
 ### Técnico
 - Configuración CENSUS_CONFIG extendida con 1991, 2001 y `geometry_column`
-- `build_spatial_filter()` ahora usa filtro bbox + ST_Intersects en dos etapas
-- Requisito DuckDB actualizado a >=1.0.0 para mejor soporte spatial
+- Datos en Source.Coop actualizados a GeoParquet 2.0 con bloom filters y estadísticas espaciales
+- Requisito DuckDB actualizado a >=1.0.0 para soporte de tipos GEOMETRY nativos
 - Tests ampliados para validar configuración de los 4 censos
 
 ## [0.6.0] - 2025-02-02
