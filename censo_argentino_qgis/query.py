@@ -252,7 +252,7 @@ def get_geographic_codes(year="2022", geo_level="PROV", progress_callback=None):
     bundled_file = os.path.join(os.path.dirname(__file__), "data", "geocodes.parquet")
 
     try:
-        con = _connection_pool.get_connection(load_extensions=False)
+        con = _connection_pool.get_connection(load_extensions=True)
 
         query = f"""
             SELECT code, label
