@@ -703,7 +703,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
 
         if placeholders:
             self.lblSqlStatus.setText(
-                f"⚠️ Error: La consulta contiene marcadores de posición que deben reemplazarse: {', '.join(placeholders)}\n\n"
+                f"⚠️ Error: La consulta contiene marcadores de posición que deben reemplazarse: {', '.join(placeholders)}\n\n"  # nosec B608 - UI message, not SQL
                 "Use la pestaña 'Explorar' para encontrar códigos de variables reales, o ejecute:\n"
                 "SELECT DISTINCT codigo_variable, etiqueta_variable FROM metadata"
             )

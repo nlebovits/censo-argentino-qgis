@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.7.1] - 2026-04-28
+
+### Corregido
+- **Validación de seguridad QGIS**: Agregado `# nosec B608` a consultas SQL para suprimir falsos positivos de Bandit (URLs vienen de constantes de configuración, entrada de usuario via placeholders `?`)
+
 ## [0.7.0] - 2026-04-28
 
 ### ⚠️ CAMBIO IMPORTANTE

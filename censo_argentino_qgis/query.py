@@ -213,7 +213,7 @@ def _get_entity_types_legacy(year="2022", progress_callback=None):
             FROM '{bundled_file}'
             WHERE year = ? AND entidad IN ({placeholders})
             ORDER BY entidad
-        """
+        """  # nosec B608 - bundled_file from os.path.join(__file__), entities from config
 
         result = con.execute(query, [year]).fetchall()
         return [row[0] for row in result]
@@ -249,7 +249,7 @@ def get_geographic_codes(year="2022", geo_level="PROV", progress_callback=None):
             FROM '{bundled_file}'
             WHERE year = ? AND level = ?
             ORDER BY code
-        """
+        """  # nosec B608 - bundled_file from os.path.join(__file__), user input via ?
         result = con.execute(query, [year, geo_level]).fetchall()
         geo_codes = [(row[0], row[1]) for row in result]
         con.close()
@@ -299,7 +299,7 @@ def preload_all_metadata(year="2022", progress_callback=None):
             FROM '{bundled_file}'
             WHERE year = ?
             ORDER BY codigo_variable, valor_categoria
-        """
+        """  # nosec B608 - bundled_file from os.path.join(__file__), user input via ?
 
         result = con.execute(query, [year]).fetchall()
         con.close()
@@ -381,7 +381,7 @@ def get_variable_categories(year="2022", variable_code=None, progress_callback=N
                 WHERE codigo_variable = ?
                   AND valor_categoria IS NOT NULL
                 ORDER BY CAST(valor_categoria AS INTEGER)
-            """
+            """  # nosec B608 - metadata_url from CENSUS_CONFIG, user input via ?
 
             result = con.execute(query_categories, [variable_code]).fetchall()
             categories = [(str(row[0]), str(row[1])) for row in result]
@@ -391,7 +391,7 @@ def get_variable_categories(year="2022", variable_code=None, progress_callback=N
                 FROM '{metadata_url}'
                 WHERE codigo_variable = ?
                   AND valor_categoria IS NULL
-            """
+            """  # nosec B608 - metadata_url from CENSUS_CONFIG, user input via ?
 
             null_count = con.execute(query_nulls, [variable_code]).fetchone()[0]
             has_nulls = null_count > 0
@@ -444,7 +444,7 @@ def get_variables(year="2022", entity_type=None, progress_callback=None):
                 FROM '{bundled_file}'
                 WHERE year = ? AND entidad = ?
                 ORDER BY codigo_variable
-            """
+            """  # nosec B608 - bundled_file from os.path.join(__file__), user input via ?
             result = con.execute(query, [year, entity_type]).fetchall()
         else:
             query = f"""
@@ -452,7 +452,7 @@ def get_variables(year="2022", entity_type=None, progress_callback=None):
                 FROM '{bundled_file}'
                 WHERE year = ?
                 ORDER BY codigo_variable
-            """
+            """  # nosec B608 - bundled_file from os.path.join(__file__), user input via ?
             result = con.execute(query, [year]).fetchall()
 
         con.close()
@@ -697,6 +697,7 @@ def load_census_layer(
             # For dissolved geometries: filter first, then aggregate to target level
             sum_columns = ", ".join([f'SUM(cp."{col}") as "{col}"' for col in column_names])
 
+            # nosec B608 - URLs from CENSUS_CONFIG constants, geo columns from config, user filters via ?
             query = f"""
                 WITH filtered_radios AS (
                     SELECT {geo_id_col}, PROV, DEPTO, FRACC, RADIO, {geom_col} as geometry
@@ -725,6 +726,7 @@ def load_census_layer(
             # For RADIO level: filter first, then pivot only matching radios
             select_columns = ", ".join([f'cp."{col}"' for col in column_names])
 
+            # nosec B608 - URLs from CENSUS_CONFIG constants, geo columns from config, user filters via ?
             query = f"""
                 WITH filtered_radios AS (
                     SELECT {geo_id_col}, {geom_col} as geometry
