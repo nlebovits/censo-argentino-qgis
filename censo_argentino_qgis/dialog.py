@@ -868,7 +868,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             if cache_dir.exists():
                 shutil.rmtree(cache_dir)
                 cache_dir.mkdir(parents=True, exist_ok=True)
-            QMessageBox.information(
+            QtWidgets.QMessageBox.information(
                 self,
                 "Caché limpiado",
                 "El caché se ha eliminado correctamente.\n\n"
@@ -880,7 +880,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             # Reload data to refresh UI
             self.load_data_async()
         except Exception as e:
-            QMessageBox.warning(
+            QtWidgets.QMessageBox.warning(
                 self,
                 "Error",
                 f"No se pudo limpiar el caché:\n{str(e)}",
