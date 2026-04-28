@@ -1,5 +1,34 @@
 # Changelog
 
+## [Unreleased]
+
+### ⚠️ CAMBIO IMPORTANTE
+- **Requiere Python >= 3.10**: DuckDB 1.5.0+ no soporta Python 3.9. QGIS 3.28+ incluye Python 3.10+
+- **Requiere DuckDB >= 1.5.0**: Versiones anteriores no soportan GeoParquet 2.0
+- Si ve error "GeoParquet version 2.0.0 is not supported", actualice DuckDB ejecutando en la consola Python de QGIS:
+  ```python
+  import subprocess, sys
+  subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'duckdb'])
+  ```
+  Luego reinicie QGIS.
+
+### Agregado
+- **Soporte para Censos 1991 y 2001**: Plugin ahora accede a datos de los 4 censos nacionales (1991, 2001, 2010, 2022)
+- **Cobertura censal completa**: 35+ años de datos censales argentinos disponibles
+- **Verificación de versión al inicio**: El plugin muestra instrucciones claras si DuckDB es muy antiguo
+
+### Mejorado
+- **GeoParquet 2.0**: Datos actualizados con tipos GEOMETRY nativos y predicate pushdown automático
+- **Soporte de columna de geometría configurable**: `geom` para 1991/2001, `geometry` para 2010/2022
+- **Compatibilidad de tipos**: Queries ahora usan CAST para manejar diferencias entre censos
+- **Documentación actualizada**: README, guía de usuario y ejemplos SQL reflejan los 4 años disponibles
+
+### Técnico
+- Configuración CENSUS_CONFIG extendida con 1991, 2001 y `geometry_column`
+- Datos en Source.Coop actualizados a GeoParquet 2.0 con bloom filters y estadísticas espaciales
+- Requisito DuckDB actualizado a >=1.5.0 para soporte de GeoParquet 2.0
+- Tests ampliados para validar configuración de los 4 censos
+
 ## [0.6.0] - 2025-02-02
 
 ### Agregado

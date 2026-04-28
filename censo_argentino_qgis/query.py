@@ -177,136 +177,85 @@ def save_cached_data(cache_key, data):
 
 
 def get_entity_types(year="2022", progress_callback=None):
-    """Consultar metadata.parquet y devolver lista de tipos de entidad disponibles (con caché)
+    """Obtener tipos de entidad desde configuración (sin red)
 
     Args:
-        year: Año del censo ("2022" o "2010")
+        year: Año del censo ("2022", "2010", "2001", "1991")
         progress_callback: Callback opcional para actualizaciones de progreso
 
     Returns:
         Lista de tipos de entidad disponibles
     """
-    cache_key = f"entity_types_{year}"
     config = CENSUS_CONFIG[year]
 
-    # Check cache first
-    cached = get_cached_data(cache_key)
-    if cached is not None:
-        if progress_callback:
-            progress_callback(100, "Tipos de entidad cargados desde caché")
-        return cached
+    if progress_callback:
+        progress_callback(100, "Tipos de entidad cargados")
+
+    # Usar entidades de la configuración directamente (sin consulta)
+    return config["entities"]
+
+
+def _get_entity_types_legacy(year="2022", progress_callback=None):
+    """DEPRECATED: Versión anterior que consultaba la red. Mantener por referencia."""
+    import os
+
+    config = CENSUS_CONFIG[year]
+    bundled_file = os.path.join(os.path.dirname(__file__), "data", "metadata.parquet")
 
     try:
-        if progress_callback:
-            progress_callback(10, "Conectando a fuente de datos...")
-
         con = _connection_pool.get_connection(load_extensions=True)
 
-        if progress_callback:
-            progress_callback(50, "Cargando tipos de entidad...")
-
-        # Usar entidades configuradas para este año
         entities = config["entities"]
         placeholders = ", ".join([f"'{e}'" for e in entities])
 
         query = f"""
             SELECT DISTINCT entidad
-            FROM '{config["urls"]["metadata"]}'
-            WHERE entidad IN ({placeholders})
+            FROM '{bundled_file}'
+            WHERE year = ? AND entidad IN ({placeholders})
             ORDER BY entidad
         """
 
-        result = con.execute(query).fetchall()
-        # Don't close - keep connection alive in pool
-
-        entity_types = [row[0] for row in result]
-
-        # Save to cache
-        save_cached_data(cache_key, entity_types)
-
-        if progress_callback:
-            progress_callback(100, "Tipos de entidad cargados")
-
-        return entity_types
+        result = con.execute(query, [year]).fetchall()
+        return [row[0] for row in result]
     except Exception as e:
         raise Exception(f"Error cargando tipos de entidad: {str(e)}")
 
 
 def get_geographic_codes(year="2022", geo_level="PROV", progress_callback=None):
-    """Consultar radios.parquet y devolver lista de códigos geográficos disponibles para el nivel (con caché)
+    """Obtener códigos geográficos desde archivo local empaquetado (sin red)
 
     Args:
-        year: Año del censo ("2022" o "2010")
+        year: Año del censo ("2022", "2010", "2001", "1991")
         geo_level: Nivel geográfico - "RADIO", "FRACC", "DEPTO", o "PROV"
         progress_callback: Callback opcional para actualizaciones de progreso
 
     Returns:
         Lista de tuplas: (código, etiqueta) para cada unidad geográfica
     """
-    cache_key = f"geo_codes_{year}_{geo_level}"
-    config = CENSUS_CONFIG[year]
-    census_url = config["urls"]["census"]
+    import os
 
-    # Check cache first
-    cached = get_cached_data(cache_key)
-    if cached is not None:
-        if progress_callback:
-            progress_callback(100, f"Códigos de {geo_level} cargados desde caché")
-        # Convert back to tuples
-        return [(item[0], item[1]) for item in cached]
+    if progress_callback:
+        progress_callback(50, f"Cargando códigos de {geo_level}...")
+
+    # Usar archivo empaquetado con el plugin (sin red, instantáneo)
+    bundled_file = os.path.join(os.path.dirname(__file__), "data", "geocodes.parquet")
 
     try:
-        if progress_callback:
-            progress_callback(10, "Conectando a fuente de datos...")
+        # Conexión local sin extensiones (thread-safe, no necesita httpfs/spatial)
+        con = duckdb.connect()
 
-        con = _connection_pool.get_connection(load_extensions=True)
-
-        if progress_callback:
-            progress_callback(50, f"Cargando códigos de {geo_level}...")
-
-        # Define queries based on geographic level (usando URL dinámica)
-        geo_queries = {
-            "PROV": f"""
-                SELECT DISTINCT
-                    c.valor_provincia as code,
-                    c.etiqueta_provincia as label
-                FROM '{census_url}' c
-                ORDER BY c.valor_provincia
-            """,
-            "DEPTO": f"""
-                SELECT DISTINCT
-                    c.valor_provincia || '-' || c.valor_departamento as code,
-                    c.etiqueta_provincia || ' - ' || c.etiqueta_departamento as label
-                FROM '{census_url}' c
-                ORDER BY c.valor_provincia, c.valor_departamento
-            """,
-            "FRACC": f"""
-                SELECT DISTINCT
-                    c.valor_provincia || '-' || c.valor_departamento || '-' || c.valor_fraccion as code,
-                    c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Fracc ' || c.valor_fraccion as label
-                FROM '{census_url}' c
-                ORDER BY c.valor_provincia, c.valor_departamento, c.valor_fraccion
-            """,
-            "RADIO": f"""
-                SELECT DISTINCT
-                    c.id_geo as code,
-                    c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Radio ' || c.valor_radio as label
-                FROM '{census_url}' c
-                ORDER BY c.valor_provincia, c.valor_departamento, c.valor_fraccion, c.valor_radio
-            """,
-        }
-
-        query = geo_queries.get(geo_level, geo_queries["PROV"])
-        result = con.execute(query).fetchall()
-        # Don't close - keep connection alive in pool
-
+        query = f"""
+            SELECT code, label
+            FROM '{bundled_file}'
+            WHERE year = ? AND level = ?
+            ORDER BY code
+        """
+        result = con.execute(query, [year, geo_level]).fetchall()
         geo_codes = [(row[0], row[1]) for row in result]
-
-        # Save to cache
-        save_cached_data(cache_key, geo_codes)
+        con.close()
 
         if progress_callback:
-            progress_callback(100, "Códigos geográficos cargados")
+            progress_callback(100, f"Códigos de {geo_level} cargados ({len(geo_codes)} registros)")
 
         return geo_codes
     except Exception as e:
@@ -315,11 +264,10 @@ def get_geographic_codes(year="2022", geo_level="PROV", progress_callback=None):
 
 def preload_all_metadata(year="2022", progress_callback=None):
     """
-    Cargar el archivo metadata.parquet completo una vez y cachear todas las categorías de variables.
-    Esto hace que las búsquedas de categorías posteriores sean instantáneas. El archivo es solo ~1MB.
+    Cargar metadatos desde archivo local empaquetado (sin red).
 
     Args:
-        year: Año del censo ("2022" o "2010")
+        year: Año del censo ("2022", "2010", "2001", "1991")
         progress_callback: Callback opcional(porcentaje, mensaje) para actualizaciones de progreso
 
     Returns:
@@ -331,35 +279,30 @@ def preload_all_metadata(year="2022", progress_callback=None):
             }
         }
     """
-    cache_key = f"all_metadata_{year}"
-    config = CENSUS_CONFIG[year]
-    metadata_url = config["urls"]["metadata"]
-
-    # Check if already cached
-    cached = get_cached_data(cache_key)
-    if cached is not None:
-        if progress_callback:
-            progress_callback(100, f"Metadatos {year} cargados desde caché")
-        return cached
+    import os
 
     if progress_callback:
         progress_callback(5, f"Cargando metadatos del censo {year}...")
 
-    try:
-        con = _connection_pool.get_connection(load_extensions=True)
+    # Usar archivo empaquetado con el plugin (sin red, instantáneo)
+    bundled_file = os.path.join(os.path.dirname(__file__), "data", "metadata.parquet")
 
-        # Load entire metadata file - it's small (~1MB)
-        # Don't cast to INTEGER since some categories are text (e.g., "12 de Octubre")
+    try:
+        # Conexión local sin extensiones (thread-safe, no necesita httpfs/spatial)
+        con = duckdb.connect()
+
         query = f"""
             SELECT
                 codigo_variable,
                 valor_categoria,
                 etiqueta_categoria
-            FROM '{metadata_url}'
+            FROM '{bundled_file}'
+            WHERE year = ?
             ORDER BY codigo_variable, valor_categoria
         """
 
-        result = con.execute(query).fetchall()
+        result = con.execute(query, [year]).fetchall()
+        con.close()
 
         # Build category map from raw results
         metadata_map = {}
@@ -377,9 +320,6 @@ def preload_all_metadata(year="2022", progress_callback=None):
                 metadata_map[var_code]["categories"].append((str(valor_cat), str(etiqueta_cat)))
             else:
                 metadata_map[var_code]["has_nulls"] = True
-
-        # Cache the entire map
-        save_cached_data(cache_key, metadata_map)
 
         if progress_callback:
             progress_callback(100, f"Metadatos {year} cargados: {len(metadata_map)} variables")
@@ -476,62 +416,50 @@ def get_variable_categories(year="2022", variable_code=None, progress_callback=N
 
 
 def get_variables(year="2022", entity_type=None, progress_callback=None):
-    """Consultar metadata.parquet y devolver lista de (codigo_variable, etiqueta_variable) para tipo de entidad (con caché)
+    """Obtener variables desde archivo local empaquetado (sin red)
 
     Args:
-        year: Año del censo ("2022" o "2010")
+        year: Año del censo ("2022", "2010", "2001", "1991")
         entity_type: Tipo de entidad (HOGAR, PERSONA, VIVIENDA) o None para todas
         progress_callback: Callback opcional para actualizaciones de progreso
 
     Returns:
         Lista de tuplas (codigo_variable, etiqueta_variable)
     """
-    cache_key = f"variables_{year}_{entity_type if entity_type else 'all'}"
-    config = CENSUS_CONFIG[year]
-    metadata_url = config["urls"]["metadata"]
+    import os
 
-    # Check cache first
-    cached = get_cached_data(cache_key)
-    if cached is not None:
-        if progress_callback:
-            progress_callback(100, "Variables cargadas desde caché")
-        # Convert back to tuples
-        return [(item[0], item[1]) for item in cached]
+    if progress_callback:
+        progress_callback(30, "Cargando metadatos de variables...")
+
+    # Usar archivo empaquetado con el plugin (sin red, instantáneo)
+    bundled_file = os.path.join(os.path.dirname(__file__), "data", "metadata.parquet")
 
     try:
-        if progress_callback:
-            progress_callback(10, "Conectando a fuente de datos...")
-
-        con = _connection_pool.get_connection(load_extensions=True)
-
-        if progress_callback:
-            progress_callback(30, "Cargando metadatos de variables...")
+        # Conexión local sin extensiones (thread-safe, no necesita httpfs/spatial)
+        con = duckdb.connect()
 
         if entity_type:
             query = f"""
                 SELECT DISTINCT codigo_variable, etiqueta_variable
-                FROM '{metadata_url}'
-                WHERE entidad = ?
+                FROM '{bundled_file}'
+                WHERE year = ? AND entidad = ?
                 ORDER BY codigo_variable
             """
-            result = con.execute(query, [entity_type]).fetchall()
+            result = con.execute(query, [year, entity_type]).fetchall()
         else:
             query = f"""
                 SELECT DISTINCT codigo_variable, etiqueta_variable
-                FROM '{metadata_url}'
+                FROM '{bundled_file}'
+                WHERE year = ?
                 ORDER BY codigo_variable
             """
-            result = con.execute(query).fetchall()
+            result = con.execute(query, [year]).fetchall()
 
-        # Don't close - keep connection alive in pool
-
+        con.close()
         variables = [(row[0], row[1]) for row in result]
 
-        # Save to cache
-        save_cached_data(cache_key, variables)
-
         if progress_callback:
-            progress_callback(100, "Variables cargadas")
+            progress_callback(100, f"Variables cargadas ({len(variables)} variables)")
 
         return variables
     except Exception as e:
@@ -615,6 +543,7 @@ def load_census_layer(
     # Obtener configuración para el año
     config = CENSUS_CONFIG[year]
     geo_id_col = config["geo_id_column"]
+    geom_col = config.get("geometry_column", "geometry")
     radios_url = config["urls"]["radios"]
     census_url = config["urls"]["census"]
 
@@ -741,7 +670,7 @@ def load_census_layer(
 
         # PHASE 4.3: Build filters using query_builders functions
         geo_filter, geo_params = build_geo_filter(geo_level, geo_filters, geo_id_col=geo_id_col)
-        spatial_filter = build_spatial_filter(bbox)
+        spatial_filter = build_spatial_filter(bbox, geometry_column=geom_col)
 
         # PHASE 4.4: Build CTE-based query (FIXES CARTESIAN PRODUCT BUG)
         # Step 1: Build pivot columns SQL using category expansion
@@ -770,7 +699,7 @@ def load_census_layer(
 
             query = f"""
                 WITH filtered_radios AS (
-                    SELECT {geo_id_col}, PROV, DEPTO, FRACC, RADIO, geometry
+                    SELECT {geo_id_col}, PROV, DEPTO, FRACC, RADIO, {geom_col} as geometry
                     FROM '{radios_url}'
                     WHERE 1=1 {geo_filter} {spatial_filter}
                 ),
@@ -798,7 +727,7 @@ def load_census_layer(
 
             query = f"""
                 WITH filtered_radios AS (
-                    SELECT {geo_id_col}, geometry
+                    SELECT {geo_id_col}, {geom_col} as geometry
                     FROM '{radios_url}'
                     WHERE 1=1 {geo_filter} {spatial_filter}
                 ),

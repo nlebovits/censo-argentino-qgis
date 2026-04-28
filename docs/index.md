@@ -4,7 +4,7 @@ Plugin de QGIS para explorar datos del censo argentino directamente desde la nub
 
 ## ¿Qué hace?
 
-Consulta datos del [Censo Nacional 2022](https://source.coop/nlebovits/censo-argentino) alojados en Source.Coop y los carga como capas vectoriales en QGIS. No requiere descargar archivos — los datos se consultan remotamente mediante DuckDB.
+Consulta datos de los censos nacionales argentinos (1991, 2001, 2010, 2022) alojados en [Source.Coop](https://source.coop/nlebovits/censo-argentino) y los carga como capas vectoriales en QGIS. No requiere descargar archivos — los datos se consultan remotamente mediante DuckDB.
 
 ## Características
 

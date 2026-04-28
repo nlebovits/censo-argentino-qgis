@@ -18,6 +18,14 @@ class TestCensusConfig:
         """Should have configuration for 2010 census."""
         assert "2010" in CENSUS_CONFIG
 
+    def test_has_2001_config(self):
+        """Should have configuration for 2001 census."""
+        assert "2001" in CENSUS_CONFIG
+
+    def test_has_1991_config(self):
+        """Should have configuration for 1991 census."""
+        assert "1991" in CENSUS_CONFIG
+
     def test_2022_geo_id_column(self):
         """2022 should use COD_2022 as geo_id_column."""
         assert CENSUS_CONFIG["2022"]["geo_id_column"] == "COD_2022"
@@ -25,6 +33,30 @@ class TestCensusConfig:
     def test_2010_geo_id_column(self):
         """2010 should use COD_2010 as geo_id_column."""
         assert CENSUS_CONFIG["2010"]["geo_id_column"] == "COD_2010"
+
+    def test_2001_geo_id_column(self):
+        """2001 should use COD_2001 as geo_id_column."""
+        assert CENSUS_CONFIG["2001"]["geo_id_column"] == "COD_2001"
+
+    def test_1991_geo_id_column(self):
+        """1991 should use COD_1991 as geo_id_column."""
+        assert CENSUS_CONFIG["1991"]["geo_id_column"] == "COD_1991"
+
+    def test_2022_geometry_column(self):
+        """2022 should use geometry as geometry_column."""
+        assert CENSUS_CONFIG["2022"]["geometry_column"] == "geometry"
+
+    def test_2010_geometry_column(self):
+        """2010 should use geometry as geometry_column."""
+        assert CENSUS_CONFIG["2010"]["geometry_column"] == "geometry"
+
+    def test_2001_geometry_column(self):
+        """2001 should use geom as geometry_column."""
+        assert CENSUS_CONFIG["2001"]["geometry_column"] == "geom"
+
+    def test_1991_geometry_column(self):
+        """1991 should use geom as geometry_column."""
+        assert CENSUS_CONFIG["1991"]["geometry_column"] == "geom"
 
     def test_2022_has_required_entities(self):
         """2022 should have HOGAR, PERSONA, VIVIENDA entities."""
@@ -36,6 +68,20 @@ class TestCensusConfig:
     def test_2010_has_required_entities(self):
         """2010 should have HOGAR, PERSONA, VIVIENDA entities."""
         entities = CENSUS_CONFIG["2010"]["entities"]
+        assert "HOGAR" in entities
+        assert "PERSONA" in entities
+        assert "VIVIENDA" in entities
+
+    def test_2001_has_required_entities(self):
+        """2001 should have HOGAR, PERSONA, VIVIENDA entities."""
+        entities = CENSUS_CONFIG["2001"]["entities"]
+        assert "HOGAR" in entities
+        assert "PERSONA" in entities
+        assert "VIVIENDA" in entities
+
+    def test_1991_has_required_entities(self):
+        """1991 should have HOGAR, PERSONA, VIVIENDA entities."""
+        entities = CENSUS_CONFIG["1991"]["entities"]
         assert "HOGAR" in entities
         assert "PERSONA" in entities
         assert "VIVIENDA" in entities
@@ -56,6 +102,22 @@ class TestCensusConfig:
         assert BASE_URL in urls["radios"]
         assert "/2010/" in urls["census"]
 
+    def test_2001_urls_use_base_url(self):
+        """2001 URLs should use the base URL pattern."""
+        urls = CENSUS_CONFIG["2001"]["urls"]
+        assert BASE_URL in urls["census"]
+        assert BASE_URL in urls["metadata"]
+        assert BASE_URL in urls["radios"]
+        assert "/2001/" in urls["census"]
+
+    def test_1991_urls_use_base_url(self):
+        """1991 URLs should use the base URL pattern."""
+        urls = CENSUS_CONFIG["1991"]["urls"]
+        assert BASE_URL in urls["census"]
+        assert BASE_URL in urls["metadata"]
+        assert BASE_URL in urls["radios"]
+        assert "/1991/" in urls["census"]
+
     def test_urls_have_parquet_extension(self):
         """All URLs should point to parquet files."""
         for year in CENSUS_CONFIG:
@@ -73,6 +135,14 @@ class TestAvailableYears:
     def test_includes_2010(self):
         """Should include 2010."""
         assert "2010" in AVAILABLE_YEARS
+
+    def test_includes_2001(self):
+        """Should include 2001."""
+        assert "2001" in AVAILABLE_YEARS
+
+    def test_includes_1991(self):
+        """Should include 1991."""
+        assert "1991" in AVAILABLE_YEARS
 
     def test_2022_comes_first(self):
         """2022 should be first (most recent)."""
