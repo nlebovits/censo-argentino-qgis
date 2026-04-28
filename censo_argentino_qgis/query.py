@@ -177,57 +177,46 @@ def save_cached_data(cache_key, data):
 
 
 def get_entity_types(year="2022", progress_callback=None):
-    """Consultar metadata.parquet y devolver lista de tipos de entidad disponibles (con caché)
+    """Obtener tipos de entidad desde configuración (sin red)
 
     Args:
-        year: Año del censo ("2022" o "2010")
+        year: Año del censo ("2022", "2010", "2001", "1991")
         progress_callback: Callback opcional para actualizaciones de progreso
 
     Returns:
         Lista de tipos de entidad disponibles
     """
-    cache_key = f"entity_types_{year}"
     config = CENSUS_CONFIG[year]
 
-    # Check cache first
-    cached = get_cached_data(cache_key)
-    if cached is not None:
-        if progress_callback:
-            progress_callback(100, "Tipos de entidad cargados desde caché")
-        return cached
+    if progress_callback:
+        progress_callback(100, "Tipos de entidad cargados")
+
+    # Usar entidades de la configuración directamente (sin consulta)
+    return config["entities"]
+
+
+def _get_entity_types_legacy(year="2022", progress_callback=None):
+    """DEPRECATED: Versión anterior que consultaba la red. Mantener por referencia."""
+    import os
+
+    config = CENSUS_CONFIG[year]
+    bundled_file = os.path.join(os.path.dirname(__file__), "data", "metadata.parquet")
 
     try:
-        if progress_callback:
-            progress_callback(10, "Conectando a fuente de datos...")
-
         con = _connection_pool.get_connection(load_extensions=True)
 
-        if progress_callback:
-            progress_callback(50, "Cargando tipos de entidad...")
-
-        # Usar entidades configuradas para este año
         entities = config["entities"]
         placeholders = ", ".join([f"'{e}'" for e in entities])
 
         query = f"""
             SELECT DISTINCT entidad
-            FROM '{config["urls"]["metadata"]}'
-            WHERE entidad IN ({placeholders})
+            FROM '{bundled_file}'
+            WHERE year = ? AND entidad IN ({placeholders})
             ORDER BY entidad
         """
 
-        result = con.execute(query).fetchall()
-        # Don't close - keep connection alive in pool
-
-        entity_types = [row[0] for row in result]
-
-        # Save to cache
-        save_cached_data(cache_key, entity_types)
-
-        if progress_callback:
-            progress_callback(100, "Tipos de entidad cargados")
-
-        return entity_types
+        result = con.execute(query, [year]).fetchall()
+        return [row[0] for row in result]
     except Exception as e:
         raise Exception(f"Error cargando tipos de entidad: {str(e)}")
 
