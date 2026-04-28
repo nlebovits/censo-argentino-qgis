@@ -265,33 +265,38 @@ def get_geographic_codes(year="2022", geo_level="PROV", progress_callback=None):
             progress_callback(50, f"Cargando códigos de {geo_level}...")
 
         # Define queries based on geographic level (usando URL dinámica)
-        # Usamos CAST para manejar diferencias de tipos entre años (1991 usa DOUBLE/INTEGER, 2022 usa VARCHAR)
+        # Normalizamos códigos: CAST a INTEGER (quita decimales) + LPAD para coincidir con radios.PROV format
         geo_queries = {
             "PROV": f"""
                 SELECT DISTINCT
-                    CAST(c.valor_provincia AS VARCHAR) as code,
+                    LPAD(CAST(CAST(c.valor_provincia AS INTEGER) AS VARCHAR), 2, '0') as code,
                     c.etiqueta_provincia as label
                 FROM '{census_url}' c
                 ORDER BY c.valor_provincia
             """,
             "DEPTO": f"""
                 SELECT DISTINCT
-                    CAST(c.valor_provincia AS VARCHAR) || '-' || CAST(c.valor_departamento AS VARCHAR) as code,
+                    LPAD(CAST(CAST(c.valor_provincia AS INTEGER) AS VARCHAR), 2, '0') || '-' ||
+                    LPAD(CAST(CAST(c.valor_departamento AS INTEGER) AS VARCHAR), 3, '0') as code,
                     c.etiqueta_provincia || ' - ' || c.etiqueta_departamento as label
                 FROM '{census_url}' c
                 ORDER BY c.valor_provincia, c.valor_departamento
             """,
             "FRACC": f"""
                 SELECT DISTINCT
-                    CAST(c.valor_provincia AS VARCHAR) || '-' || CAST(c.valor_departamento AS VARCHAR) || '-' || CAST(c.valor_fraccion AS VARCHAR) as code,
-                    c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Fracc ' || CAST(c.valor_fraccion AS VARCHAR) as label
+                    LPAD(CAST(CAST(c.valor_provincia AS INTEGER) AS VARCHAR), 2, '0') || '-' ||
+                    LPAD(CAST(CAST(c.valor_departamento AS INTEGER) AS VARCHAR), 3, '0') || '-' ||
+                    LPAD(CAST(CAST(c.valor_fraccion AS INTEGER) AS VARCHAR), 2, '0') as code,
+                    c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Fracc ' ||
+                    CAST(CAST(c.valor_fraccion AS INTEGER) AS VARCHAR) as label
                 FROM '{census_url}' c
                 ORDER BY c.valor_provincia, c.valor_departamento, c.valor_fraccion
             """,
             "RADIO": f"""
                 SELECT DISTINCT
                     c.id_geo as code,
-                    c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Radio ' || CAST(c.valor_radio AS VARCHAR) as label
+                    c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Radio ' ||
+                    CAST(CAST(c.valor_radio AS INTEGER) AS VARCHAR) as label
                 FROM '{census_url}' c
                 ORDER BY c.valor_provincia, c.valor_departamento, c.valor_fraccion, c.valor_radio
             """,
