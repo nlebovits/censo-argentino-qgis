@@ -273,11 +273,10 @@ def get_geographic_codes(year="2022", geo_level="PROV", progress_callback=None):
 
 def preload_all_metadata(year="2022", progress_callback=None):
     """
-    Cargar el archivo metadata.parquet completo una vez y cachear todas las categorías de variables.
-    Esto hace que las búsquedas de categorías posteriores sean instantáneas. El archivo es solo ~1MB.
+    Cargar metadatos desde archivo local empaquetado (sin red).
 
     Args:
-        year: Año del censo ("2022" o "2010")
+        year: Año del censo ("2022", "2010", "2001", "1991")
         progress_callback: Callback opcional(porcentaje, mensaje) para actualizaciones de progreso
 
     Returns:
@@ -289,35 +288,28 @@ def preload_all_metadata(year="2022", progress_callback=None):
             }
         }
     """
-    cache_key = f"all_metadata_{year}"
-    config = CENSUS_CONFIG[year]
-    metadata_url = config["urls"]["metadata"]
-
-    # Check if already cached
-    cached = get_cached_data(cache_key)
-    if cached is not None:
-        if progress_callback:
-            progress_callback(100, f"Metadatos {year} cargados desde caché")
-        return cached
+    import os
 
     if progress_callback:
         progress_callback(5, f"Cargando metadatos del censo {year}...")
 
+    # Usar archivo empaquetado con el plugin (sin red, instantáneo)
+    bundled_file = os.path.join(os.path.dirname(__file__), "data", "metadata.parquet")
+
     try:
         con = _connection_pool.get_connection(load_extensions=True)
 
-        # Load entire metadata file - it's small (~1MB)
-        # Don't cast to INTEGER since some categories are text (e.g., "12 de Octubre")
         query = f"""
             SELECT
                 codigo_variable,
                 valor_categoria,
                 etiqueta_categoria
-            FROM '{metadata_url}'
+            FROM '{bundled_file}'
+            WHERE year = ?
             ORDER BY codigo_variable, valor_categoria
         """
 
-        result = con.execute(query).fetchall()
+        result = con.execute(query, [year]).fetchall()
 
         # Build category map from raw results
         metadata_map = {}
@@ -335,9 +327,6 @@ def preload_all_metadata(year="2022", progress_callback=None):
                 metadata_map[var_code]["categories"].append((str(valor_cat), str(etiqueta_cat)))
             else:
                 metadata_map[var_code]["has_nulls"] = True
-
-        # Cache the entire map
-        save_cached_data(cache_key, metadata_map)
 
         if progress_callback:
             progress_callback(100, f"Metadatos {year} cargados: {len(metadata_map)} variables")
@@ -434,62 +423,48 @@ def get_variable_categories(year="2022", variable_code=None, progress_callback=N
 
 
 def get_variables(year="2022", entity_type=None, progress_callback=None):
-    """Consultar metadata.parquet y devolver lista de (codigo_variable, etiqueta_variable) para tipo de entidad (con caché)
+    """Obtener variables desde archivo local empaquetado (sin red)
 
     Args:
-        year: Año del censo ("2022" o "2010")
+        year: Año del censo ("2022", "2010", "2001", "1991")
         entity_type: Tipo de entidad (HOGAR, PERSONA, VIVIENDA) o None para todas
         progress_callback: Callback opcional para actualizaciones de progreso
 
     Returns:
         Lista de tuplas (codigo_variable, etiqueta_variable)
     """
-    cache_key = f"variables_{year}_{entity_type if entity_type else 'all'}"
-    config = CENSUS_CONFIG[year]
-    metadata_url = config["urls"]["metadata"]
+    import os
 
-    # Check cache first
-    cached = get_cached_data(cache_key)
-    if cached is not None:
-        if progress_callback:
-            progress_callback(100, "Variables cargadas desde caché")
-        # Convert back to tuples
-        return [(item[0], item[1]) for item in cached]
+    if progress_callback:
+        progress_callback(30, "Cargando metadatos de variables...")
+
+    # Usar archivo empaquetado con el plugin (sin red, instantáneo)
+    bundled_file = os.path.join(os.path.dirname(__file__), "data", "metadata.parquet")
 
     try:
-        if progress_callback:
-            progress_callback(10, "Conectando a fuente de datos...")
-
         con = _connection_pool.get_connection(load_extensions=True)
-
-        if progress_callback:
-            progress_callback(30, "Cargando metadatos de variables...")
 
         if entity_type:
             query = f"""
                 SELECT DISTINCT codigo_variable, etiqueta_variable
-                FROM '{metadata_url}'
-                WHERE entidad = ?
+                FROM '{bundled_file}'
+                WHERE year = ? AND entidad = ?
                 ORDER BY codigo_variable
             """
-            result = con.execute(query, [entity_type]).fetchall()
+            result = con.execute(query, [year, entity_type]).fetchall()
         else:
             query = f"""
                 SELECT DISTINCT codigo_variable, etiqueta_variable
-                FROM '{metadata_url}'
+                FROM '{bundled_file}'
+                WHERE year = ?
                 ORDER BY codigo_variable
             """
-            result = con.execute(query).fetchall()
-
-        # Don't close - keep connection alive in pool
+            result = con.execute(query, [year]).fetchall()
 
         variables = [(row[0], row[1]) for row in result]
 
-        # Save to cache
-        save_cached_data(cache_key, variables)
-
         if progress_callback:
-            progress_callback(100, "Variables cargadas")
+            progress_callback(100, f"Variables cargadas ({len(variables)} variables)")
 
         return variables
     except Exception as e:
