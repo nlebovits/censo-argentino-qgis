@@ -266,11 +266,12 @@ def get_geographic_codes(year="2022", geo_level="PROV", progress_callback=None):
 
         # Define queries based on geographic level (usando URL dinámica)
         # Normalizamos códigos: CAST a INTEGER (quita decimales) + LPAD para coincidir con radios.PROV format
+        # Usamos COALESCE para manejar etiquetas NULL (ej: 1991 no tiene etiqueta_departamento)
         geo_queries = {
             "PROV": f"""
                 SELECT DISTINCT
                     LPAD(CAST(CAST(c.valor_provincia AS INTEGER) AS VARCHAR), 2, '0') as code,
-                    c.etiqueta_provincia as label
+                    COALESCE(c.etiqueta_provincia, 'Provincia ' || CAST(c.valor_provincia AS VARCHAR)) as label
                 FROM '{census_url}' c
                 ORDER BY c.valor_provincia
             """,
@@ -278,7 +279,8 @@ def get_geographic_codes(year="2022", geo_level="PROV", progress_callback=None):
                 SELECT DISTINCT
                     LPAD(CAST(CAST(c.valor_provincia AS INTEGER) AS VARCHAR), 2, '0') || '-' ||
                     LPAD(CAST(CAST(c.valor_departamento AS INTEGER) AS VARCHAR), 3, '0') as code,
-                    c.etiqueta_provincia || ' - ' || c.etiqueta_departamento as label
+                    COALESCE(c.etiqueta_provincia, 'Prov ' || CAST(c.valor_provincia AS VARCHAR)) || ' - ' ||
+                    COALESCE(c.etiqueta_departamento, 'Depto ' || CAST(c.valor_departamento AS VARCHAR)) as label
                 FROM '{census_url}' c
                 ORDER BY c.valor_provincia, c.valor_departamento
             """,
@@ -287,7 +289,8 @@ def get_geographic_codes(year="2022", geo_level="PROV", progress_callback=None):
                     LPAD(CAST(CAST(c.valor_provincia AS INTEGER) AS VARCHAR), 2, '0') || '-' ||
                     LPAD(CAST(CAST(c.valor_departamento AS INTEGER) AS VARCHAR), 3, '0') || '-' ||
                     LPAD(CAST(CAST(c.valor_fraccion AS INTEGER) AS VARCHAR), 2, '0') as code,
-                    c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Fracc ' ||
+                    COALESCE(c.etiqueta_provincia, 'Prov ' || CAST(c.valor_provincia AS VARCHAR)) || ' - ' ||
+                    COALESCE(c.etiqueta_departamento, 'Depto ' || CAST(c.valor_departamento AS VARCHAR)) || ' - Fracc ' ||
                     CAST(CAST(c.valor_fraccion AS INTEGER) AS VARCHAR) as label
                 FROM '{census_url}' c
                 ORDER BY c.valor_provincia, c.valor_departamento, c.valor_fraccion
@@ -295,7 +298,8 @@ def get_geographic_codes(year="2022", geo_level="PROV", progress_callback=None):
             "RADIO": f"""
                 SELECT DISTINCT
                     c.id_geo as code,
-                    c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Radio ' ||
+                    COALESCE(c.etiqueta_provincia, 'Prov ' || CAST(c.valor_provincia AS VARCHAR)) || ' - ' ||
+                    COALESCE(c.etiqueta_departamento, 'Depto ' || CAST(c.valor_departamento AS VARCHAR)) || ' - Radio ' ||
                     CAST(CAST(c.valor_radio AS INTEGER) AS VARCHAR) as label
                 FROM '{census_url}' c
                 ORDER BY c.valor_provincia, c.valor_departamento, c.valor_fraccion, c.valor_radio
