@@ -872,13 +872,11 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
                 self,
                 "Caché limpiado",
                 "El caché se ha eliminado correctamente.\n\n"
-                "Los datos se recargarán desde el servidor en el próximo uso.",
+                "Cierre y vuelva a abrir el plugin para recargar los datos.",
             )
             QgsMessageLog.logMessage(
                 f"Caché limpiado: {cache_dir}", "Censo Argentino", Qgis.Info
             )
-            # Reload data to refresh UI
-            self.load_data_async()
         except Exception as e:
             QtWidgets.QMessageBox.warning(
                 self,
