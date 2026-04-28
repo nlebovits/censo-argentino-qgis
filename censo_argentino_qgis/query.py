@@ -233,90 +233,38 @@ def get_entity_types(year="2022", progress_callback=None):
 
 
 def get_geographic_codes(year="2022", geo_level="PROV", progress_callback=None):
-    """Consultar radios.parquet y devolver lista de códigos geográficos disponibles para el nivel (con caché)
+    """Obtener códigos geográficos desde archivo local empaquetado (sin red)
 
     Args:
-        year: Año del censo ("2022" o "2010")
+        year: Año del censo ("2022", "2010", "2001", "1991")
         geo_level: Nivel geográfico - "RADIO", "FRACC", "DEPTO", o "PROV"
         progress_callback: Callback opcional para actualizaciones de progreso
 
     Returns:
         Lista de tuplas: (código, etiqueta) para cada unidad geográfica
     """
-    cache_key = f"geo_codes_{year}_{geo_level}"
-    config = CENSUS_CONFIG[year]
-    census_url = config["urls"]["census"]
+    import os
 
-    # Check cache first
-    cached = get_cached_data(cache_key)
-    if cached is not None:
-        if progress_callback:
-            progress_callback(100, f"Códigos de {geo_level} cargados desde caché")
-        # Convert back to tuples
-        return [(item[0], item[1]) for item in cached]
+    if progress_callback:
+        progress_callback(50, f"Cargando códigos de {geo_level}...")
+
+    # Usar archivo empaquetado con el plugin (sin red, instantáneo)
+    bundled_file = os.path.join(os.path.dirname(__file__), "data", "geocodes.parquet")
 
     try:
-        if progress_callback:
-            progress_callback(10, "Conectando a fuente de datos...")
+        con = _connection_pool.get_connection(load_extensions=False)
 
-        con = _connection_pool.get_connection(load_extensions=True)
-
-        if progress_callback:
-            progress_callback(50, f"Cargando códigos de {geo_level}...")
-
-        # Define queries based on geographic level (usando URL dinámica)
-        # Normalizamos códigos: CAST a INTEGER (quita decimales) + LPAD para coincidir con radios.PROV format
-        # Usamos COALESCE para manejar etiquetas NULL (ej: 1991 no tiene etiqueta_departamento)
-        geo_queries = {
-            "PROV": f"""
-                SELECT DISTINCT
-                    LPAD(CAST(CAST(c.valor_provincia AS INTEGER) AS VARCHAR), 2, '0') as code,
-                    COALESCE(c.etiqueta_provincia, 'Provincia ' || CAST(c.valor_provincia AS VARCHAR)) as label
-                FROM '{census_url}' c
-                ORDER BY c.valor_provincia
-            """,
-            "DEPTO": f"""
-                SELECT DISTINCT
-                    LPAD(CAST(CAST(c.valor_provincia AS INTEGER) AS VARCHAR), 2, '0') || '-' ||
-                    LPAD(CAST(CAST(c.valor_departamento AS INTEGER) AS VARCHAR), 3, '0') as code,
-                    COALESCE(c.etiqueta_provincia, 'Prov ' || CAST(c.valor_provincia AS VARCHAR)) || ' - ' ||
-                    COALESCE(c.etiqueta_departamento, 'Depto ' || CAST(c.valor_departamento AS VARCHAR)) as label
-                FROM '{census_url}' c
-                ORDER BY c.valor_provincia, c.valor_departamento
-            """,
-            "FRACC": f"""
-                SELECT DISTINCT
-                    LPAD(CAST(CAST(c.valor_provincia AS INTEGER) AS VARCHAR), 2, '0') || '-' ||
-                    LPAD(CAST(CAST(c.valor_departamento AS INTEGER) AS VARCHAR), 3, '0') || '-' ||
-                    LPAD(CAST(CAST(c.valor_fraccion AS INTEGER) AS VARCHAR), 2, '0') as code,
-                    COALESCE(c.etiqueta_provincia, 'Prov ' || CAST(c.valor_provincia AS VARCHAR)) || ' - ' ||
-                    COALESCE(c.etiqueta_departamento, 'Depto ' || CAST(c.valor_departamento AS VARCHAR)) || ' - Fracc ' ||
-                    CAST(CAST(c.valor_fraccion AS INTEGER) AS VARCHAR) as label
-                FROM '{census_url}' c
-                ORDER BY c.valor_provincia, c.valor_departamento, c.valor_fraccion
-            """,
-            "RADIO": f"""
-                SELECT DISTINCT
-                    c.id_geo as code,
-                    COALESCE(c.etiqueta_provincia, 'Prov ' || CAST(c.valor_provincia AS VARCHAR)) || ' - ' ||
-                    COALESCE(c.etiqueta_departamento, 'Depto ' || CAST(c.valor_departamento AS VARCHAR)) || ' - Radio ' ||
-                    CAST(CAST(c.valor_radio AS INTEGER) AS VARCHAR) as label
-                FROM '{census_url}' c
-                ORDER BY c.valor_provincia, c.valor_departamento, c.valor_fraccion, c.valor_radio
-            """,
-        }
-
-        query = geo_queries.get(geo_level, geo_queries["PROV"])
-        result = con.execute(query).fetchall()
-        # Don't close - keep connection alive in pool
-
+        query = f"""
+            SELECT code, label
+            FROM '{bundled_file}'
+            WHERE year = ? AND level = ?
+            ORDER BY code
+        """
+        result = con.execute(query, [year, geo_level]).fetchall()
         geo_codes = [(row[0], row[1]) for row in result]
 
-        # Save to cache
-        save_cached_data(cache_key, geo_codes)
-
         if progress_callback:
-            progress_callback(100, "Códigos geográficos cargados")
+            progress_callback(100, f"Códigos de {geo_level} cargados ({len(geo_codes)} registros)")
 
         return geo_codes
     except Exception as e:
