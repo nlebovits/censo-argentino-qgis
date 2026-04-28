@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### ⚠️ CAMBIO IMPORTANTE
+- **Requiere Python >= 3.10**: DuckDB 1.5.0+ no soporta Python 3.9. QGIS 3.28+ incluye Python 3.10+
 - **Requiere DuckDB >= 1.5.0**: Versiones anteriores no soportan GeoParquet 2.0
 - Si ve error "GeoParquet version 2.0.0 is not supported", actualice DuckDB ejecutando en la consola Python de QGIS:
   ```python
