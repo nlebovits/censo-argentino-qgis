@@ -241,7 +241,8 @@ def get_geographic_codes(year="2022", geo_level="PROV", progress_callback=None):
     bundled_file = os.path.join(os.path.dirname(__file__), "data", "geocodes.parquet")
 
     try:
-        con = _connection_pool.get_connection(load_extensions=True)
+        # Conexión local sin extensiones (thread-safe, no necesita httpfs/spatial)
+        con = duckdb.connect()
 
         query = f"""
             SELECT code, label
@@ -251,6 +252,7 @@ def get_geographic_codes(year="2022", geo_level="PROV", progress_callback=None):
         """
         result = con.execute(query, [year, geo_level]).fetchall()
         geo_codes = [(row[0], row[1]) for row in result]
+        con.close()
 
         if progress_callback:
             progress_callback(100, f"Códigos de {geo_level} cargados ({len(geo_codes)} registros)")
@@ -286,7 +288,8 @@ def preload_all_metadata(year="2022", progress_callback=None):
     bundled_file = os.path.join(os.path.dirname(__file__), "data", "metadata.parquet")
 
     try:
-        con = _connection_pool.get_connection(load_extensions=True)
+        # Conexión local sin extensiones (thread-safe, no necesita httpfs/spatial)
+        con = duckdb.connect()
 
         query = f"""
             SELECT
@@ -299,6 +302,7 @@ def preload_all_metadata(year="2022", progress_callback=None):
         """
 
         result = con.execute(query, [year]).fetchall()
+        con.close()
 
         # Build category map from raw results
         metadata_map = {}
@@ -431,7 +435,8 @@ def get_variables(year="2022", entity_type=None, progress_callback=None):
     bundled_file = os.path.join(os.path.dirname(__file__), "data", "metadata.parquet")
 
     try:
-        con = _connection_pool.get_connection(load_extensions=True)
+        # Conexión local sin extensiones (thread-safe, no necesita httpfs/spatial)
+        con = duckdb.connect()
 
         if entity_type:
             query = f"""
@@ -450,6 +455,7 @@ def get_variables(year="2022", entity_type=None, progress_callback=None):
             """
             result = con.execute(query, [year]).fetchall()
 
+        con.close()
         variables = [(row[0], row[1]) for row in result]
 
         if progress_callback:
