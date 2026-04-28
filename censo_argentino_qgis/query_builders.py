@@ -56,12 +56,17 @@ def build_geo_filter(geo_level, geo_filters, geo_id_col="COD_2022"):
     return geo_filter, query_params
 
 
-def build_spatial_filter(bbox):
+def build_spatial_filter(bbox, geometry_column="geometry"):
     """
     Construir fragmento SQL de filtro de bounding box espacial.
 
+    GeoParquet 2.0 usa tipos GEOMETRY nativos de Parquet con estadísticas
+    espaciales integradas. DuckDB automáticamente hace predicate pushdown
+    del filtro ST_Intersects sin necesidad de columna bbox separada.
+
     Args:
         bbox: Tupla de (xmin, ymin, xmax, ymax) en EPSG:4326
+        geometry_column: Nombre de la columna de geometría (default "geometry")
 
     Returns:
         str: Fragmento SQL con condición ST_Intersects, o string vacío si bbox es None
@@ -70,11 +75,13 @@ def build_spatial_filter(bbox):
         return ""
 
     xmin, ymin, xmax, ymax = bbox
+
     # DuckDB spatial doesn't support SRID parameter in ST_GeomFromText
+    # Con GeoParquet 2.0, DuckDB hace pushdown automático via estadísticas nativas
     bbox_wkt = (
         f"POLYGON(({xmin} {ymin}, {xmax} {ymin}, {xmax} {ymax}, {xmin} {ymax}, {xmin} {ymin}))"
     )
-    return f" AND ST_Intersects(geometry, ST_GeomFromText('{bbox_wkt}'))"
+    return f" AND ST_Intersects({geometry_column}, ST_GeomFromText('{bbox_wkt}'))"
 
 
 def build_pivot_columns(variable_codes, variable_categories_map):

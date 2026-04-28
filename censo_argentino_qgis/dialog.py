@@ -10,7 +10,6 @@ from qgis.utils import iface
 from .config import AVAILABLE_YEARS
 from .query import (
     calculate_column_count,
-    get_cached_data,
     get_geographic_codes,
     get_variable_categories,
     get_variables,
@@ -25,41 +24,42 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "dialog.u
 EXAMPLE_QUERIES = {
     "-- Seleccionar un ejemplo --": "",
     "Población total por radio": """-- Las vistas 'radios' y 'census' cambian según el año seleccionado
--- Para 2022 usa COD_2022, para 2010 usa COD_2010 automáticamente
+-- El plugin usa automáticamente COD_XXXX según el año (1991, 2001, 2010, 2022)
 SELECT
     c.id_geo as geo_id,
     ST_AsText(g.geometry) as wkt,
     c.conteo as total_pop
 FROM census c
-JOIN radios g ON c.id_geo = COALESCE(g.COD_2022, g.COD_2010)
+JOIN radios g ON c.id_geo = g.COD_XXXX  -- Reemplazar XXXX con el año
 WHERE c.codigo_variable LIKE '%POB_TOT%'
 LIMIT 1000""",
     "Comparar dos variables (plantilla de ratio)": """-- Reemplazar VAR_A y VAR_B con códigos de variable reales
--- Las vistas cambian según el año seleccionado
+-- El plugin usa automáticamente COD_XXXX según el año (1991, 2001, 2010, 2022)
 SELECT
     a.id_geo as geo_id,
     ST_AsText(g.geometry) as wkt,
     (a.conteo::float / NULLIF(b.conteo, 0)) * 100 as ratio
 FROM census a
 JOIN census b ON a.id_geo = b.id_geo AND b.codigo_variable = 'VAR_B'
-JOIN radios g ON a.id_geo = COALESCE(g.COD_2022, g.COD_2010)
+JOIN radios g ON a.id_geo = g.COD_XXXX  -- Reemplazar XXXX con el año
 WHERE a.codigo_variable = 'VAR_A'
 LIMIT 1000""",
-    "Agregar a nivel departamental": """SELECT
+    "Agregar a nivel departamental": """-- El plugin usa automáticamente COD_XXXX según el año (1991, 2001, 2010, 2022)
+SELECT
     c.valor_provincia || '-' || c.valor_departamento as geo_id,
     ST_AsText(ST_Union_Agg(g.geometry)) as wkt,
     SUM(c.conteo) as total
 FROM census c
-JOIN radios g ON c.id_geo = COALESCE(g.COD_2022, g.COD_2010)
+JOIN radios g ON c.id_geo = g.COD_XXXX  -- Reemplazar XXXX con el año
 WHERE c.codigo_variable LIKE '%POB_TOT%'
 GROUP BY c.valor_provincia, c.valor_departamento""",
-    "Filtrar por provincia": """-- Las vistas cambian según el año seleccionado
+    "Filtrar por provincia": """-- El plugin usa automáticamente COD_XXXX según el año (1991, 2001, 2010, 2022)
 SELECT
     c.id_geo as geo_id,
     ST_AsText(g.geometry) as wkt,
     c.conteo as poblacion
 FROM census c
-JOIN radios g ON c.id_geo = COALESCE(g.COD_2022, g.COD_2010)
+JOIN radios g ON c.id_geo = g.COD_XXXX  -- Reemplazar XXXX con el año
 WHERE c.codigo_variable LIKE '%POB_TOT%'
   AND c.etiqueta_provincia LIKE '%Buenos Aires%'
 LIMIT 1000""",
@@ -206,16 +206,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
     def load_data_async(self):
         """Load initial data (geo codes, variables, and metadata) in background threads"""
         year = self.comboYear.currentData() or "2022"
-
-        # Check if this is a first-time cache load (show special message)
-        cache_key = f"all_metadata_{year}"
-        is_first_load = get_cached_data(cache_key) is None
-
-        if is_first_load:
-            # Show caching dialog for first-time users
-            self.show_caching_message(year)
-        else:
-            self.lblDescription.setText("Cargando datos...")
+        self.lblDescription.setText("Cargando datos...")
 
         # Preload all metadata in background (makes category lookups instant)
         metadata_thread = DataLoaderThread(preload_all_metadata, "metadata", year=year)
@@ -245,24 +236,6 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             var_thread.error.connect(self.on_data_load_error)
             self.loader_threads.append(var_thread)
             var_thread.start()
-
-    def show_caching_message(self, year):
-        """Show a non-blocking message about first-time caching"""
-        self.lblDescription.setText(f"⏳ Cacheando metadatos del censo {year} (operación única)...")
-        # Also show a message box for visibility
-        msg = QtWidgets.QMessageBox(self)
-        msg.setIcon(QtWidgets.QMessageBox.Information)
-        msg.setWindowTitle("Cargando metadatos")
-        msg.setText(
-            f"Primera vez cargando datos del censo {year}.\n\n"
-            "El plugin está descargando y cacheando los metadatos.\n"
-            "Esto toma unos segundos y solo ocurre una vez por año censal.\n\n"
-            "Las próximas cargas serán instantáneas."
-        )
-        msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
-        # Use a timer to auto-close after 3 seconds
-        QTimer.singleShot(5000, msg.accept)
-        msg.show()  # Non-blocking show
 
     def on_metadata_loaded(self, metadata_map, data_type):
         """Handle metadata preload completion"""

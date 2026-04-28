@@ -26,6 +26,40 @@ Si el error persiste, verifique que DuckDB se instaló correctamente:
 2. Ejecute: `import duckdb`
 3. Si no aparece error, la instalación fue exitosa
 
+## Requisito: Python 3.10 o superior
+
+**Causa**: DuckDB >= 1.5.0 requiere Python 3.10 o superior. Si usa QGIS con Python 3.9, no podrá instalar la versión requerida de DuckDB.
+
+**Solución**: Actualice a una versión de QGIS que incluya Python 3.10+. Las versiones recientes de QGIS (3.28+) generalmente incluyen Python 3.10 o superior.
+
+Para verificar su versión de Python en QGIS:
+1. Abra **Complementos → Consola de Python**
+2. Ejecute: `import sys; print(sys.version)`
+
+## Error: GeoParquet version 2.0.0 is not supported
+
+**Causa**: Su versión de DuckDB es demasiado antigua. Los datos del censo usan GeoParquet 2.0, que requiere DuckDB >= 1.5.0.
+
+**Solución**: Actualizar DuckDB desde la consola Python de QGIS:
+
+1. Abra **Complementos → Consola de Python**
+2. Pegue este código:
+
+```python
+import subprocess
+import sys
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'duckdb'])
+```
+
+3. Presione Enter y espere a que termine
+4. **Reinicie QGIS completamente**
+
+Para verificar la versión instalada:
+```python
+import duckdb
+print(duckdb.__version__)  # Debe ser >= 1.5.0
+```
+
 ## Error de conexión
 
 **Causa**: Sin acceso a Internet o Source.Coop no disponible.

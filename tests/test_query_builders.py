@@ -142,6 +142,13 @@ class TestBuildSpatialFilter:
         assert "POLYGON" in result
         # DuckDB doesn't support SRID parameter, so no 4326 in output
 
+    def test_uses_custom_geometry_column(self):
+        """Should use custom geometry column name."""
+        bbox = (-58.5, -34.7, -58.3, -34.5)
+        result = build_spatial_filter(bbox, geometry_column="geom")
+
+        assert "ST_Intersects(geom," in result
+
     def test_uses_correct_bbox_coordinates(self):
         """Should use bbox coordinates in correct order for POLYGON."""
         bbox = (-58.5, -34.7, -58.3, -34.5)
