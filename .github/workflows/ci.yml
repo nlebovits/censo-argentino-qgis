@@ -120,6 +120,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
 
+      - name: Actualizar pip
+        run: pip install --upgrade pip
+
       - name: Instalar dependencias
         run: pip install -r requirements-dev.txt
 
