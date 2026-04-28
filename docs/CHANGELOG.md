@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.7.2] - 2026-04-28
+
+### Corregido
+- **Validación de seguridad QGIS**: Mover `# nosec B608` a la misma línea del f-string (requerido por Bandit)
+
 ## [0.7.1] - 2026-04-28
 
 ### Corregido

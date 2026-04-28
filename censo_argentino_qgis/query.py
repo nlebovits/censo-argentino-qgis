@@ -697,7 +697,6 @@ def load_census_layer(
             # For dissolved geometries: filter first, then aggregate to target level
             sum_columns = ", ".join([f'SUM(cp."{col}") as "{col}"' for col in column_names])
 
-            # nosec B608 - URLs from CENSUS_CONFIG constants, geo columns from config, user filters via ?
             query = f"""
                 WITH filtered_radios AS (
                     SELECT {geo_id_col}, PROV, DEPTO, FRACC, RADIO, {geom_col} as geometry
@@ -721,12 +720,11 @@ def load_census_layer(
                 JOIN census_pivoted cp
                     ON g.PROV = cp.PROV AND g.DEPTO = cp.DEPTO AND g.FRACC = cp.FRACC AND g.RADIO = cp.RADIO
                 GROUP BY {geo_config_level["group_cols"]}
-            """
+            """  # nosec B608
         else:
             # For RADIO level: filter first, then pivot only matching radios
             select_columns = ", ".join([f'cp."{col}"' for col in column_names])
 
-            # nosec B608 - URLs from CENSUS_CONFIG constants, geo columns from config, user filters via ?
             query = f"""
                 WITH filtered_radios AS (
                     SELECT {geo_id_col}, {geom_col} as geometry
@@ -748,7 +746,7 @@ def load_census_layer(
                     {select_columns}
                 FROM filtered_radios g
                 JOIN census_pivoted cp ON g.{geo_id_col} = cp.{geo_id_col}
-            """
+            """  # nosec B608
 
         if progress_callback:
             progress_callback(20, "Construyendo consulta...")
@@ -951,7 +949,7 @@ def run_custom_query(sql, year="2022", progress_callback=None):
             CREATE VIEW radios AS SELECT * FROM '{config["urls"]["radios"]}';
             CREATE VIEW census AS SELECT * FROM '{config["urls"]["census"]}';
             CREATE VIEW metadata AS SELECT * FROM '{config["urls"]["metadata"]}';
-        """)
+        """)  # nosec B608
 
         if progress_callback:
             progress_callback(30, "Ejecutando consulta...")
