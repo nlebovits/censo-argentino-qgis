@@ -170,7 +170,6 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         # Bug button - tools-report-bug icon
         self.btnReportBug.setIcon(QIcon.fromTheme("tools-report-bug"))
 
-
     def init_year_combo(self):
         """Initialize year dropdown with available census years"""
         self.comboYear.clear()
@@ -207,16 +206,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
     def load_data_async(self):
         """Load initial data (geo codes, variables, and metadata) in background threads"""
         year = self.comboYear.currentData() or "2022"
-
-        # Check if this is a first-time cache load (show special message)
-        cache_key = f"all_metadata_{year}"
-        is_first_load = get_cached_data(cache_key) is None
-
-        if is_first_load:
-            # Show caching dialog for first-time users
-            self.show_caching_message(year)
-        else:
-            self.lblDescription.setText("Cargando datos...")
+        self.lblDescription.setText("Cargando datos...")
 
         # Preload all metadata in background (makes category lookups instant)
         metadata_thread = DataLoaderThread(preload_all_metadata, "metadata", year=year)
@@ -246,24 +236,6 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
             var_thread.error.connect(self.on_data_load_error)
             self.loader_threads.append(var_thread)
             var_thread.start()
-
-    def show_caching_message(self, year):
-        """Show a non-blocking message about first-time caching"""
-        self.lblDescription.setText(f"⏳ Cacheando metadatos del censo {year} (operación única)...")
-        # Also show a message box for visibility
-        msg = QtWidgets.QMessageBox(self)
-        msg.setIcon(QtWidgets.QMessageBox.Information)
-        msg.setWindowTitle("Cargando metadatos")
-        msg.setText(
-            f"Primera vez cargando datos del censo {year}.\n\n"
-            "El plugin está descargando y cacheando los metadatos.\n"
-            "Esto toma unos segundos y solo ocurre una vez por año censal.\n\n"
-            "Las próximas cargas serán instantáneas."
-        )
-        msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
-        # Use a timer to auto-close after 3 seconds
-        QTimer.singleShot(5000, msg.accept)
-        msg.show()  # Non-blocking show
 
     def on_metadata_loaded(self, metadata_map, data_type):
         """Handle metadata preload completion"""
