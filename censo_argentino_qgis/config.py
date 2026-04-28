@@ -5,6 +5,7 @@ BASE_URL = "https://data.source.coop/nlebovits/censo-argentino"
 CENSUS_CONFIG = {
     "2022": {
         "geo_id_column": "COD_2022",
+        "geometry_column": "geometry",
         "entities": ["HOGAR", "PERSONA", "VIVIENDA"],
         "urls": {
             "census": f"{BASE_URL}/2022/census-data.parquet",
@@ -14,6 +15,7 @@ CENSUS_CONFIG = {
     },
     "2010": {
         "geo_id_column": "COD_2010",
+        "geometry_column": "geometry",
         "entities": ["HOGAR", "PERSONA", "VIVIENDA"],
         "urls": {
             "census": f"{BASE_URL}/2010/census-data.parquet",
@@ -23,6 +25,7 @@ CENSUS_CONFIG = {
     },
     "2001": {
         "geo_id_column": "COD_2001",
+        "geometry_column": "geom",
         "entities": ["HOGAR", "PERSONA", "VIVIENDA"],
         "urls": {
             "census": f"{BASE_URL}/2001/census-data.parquet",
@@ -32,6 +35,7 @@ CENSUS_CONFIG = {
     },
     "1991": {
         "geo_id_column": "COD_1991",
+        "geometry_column": "geom",
         "entities": ["HOGAR", "PERSONA", "VIVIENDA"],
         "urls": {
             "census": f"{BASE_URL}/1991/census-data.parquet",

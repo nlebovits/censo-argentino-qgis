@@ -42,6 +42,22 @@ class TestCensusConfig:
         """1991 should use COD_1991 as geo_id_column."""
         assert CENSUS_CONFIG["1991"]["geo_id_column"] == "COD_1991"
 
+    def test_2022_geometry_column(self):
+        """2022 should use geometry as geometry_column."""
+        assert CENSUS_CONFIG["2022"]["geometry_column"] == "geometry"
+
+    def test_2010_geometry_column(self):
+        """2010 should use geometry as geometry_column."""
+        assert CENSUS_CONFIG["2010"]["geometry_column"] == "geometry"
+
+    def test_2001_geometry_column(self):
+        """2001 should use geom as geometry_column."""
+        assert CENSUS_CONFIG["2001"]["geometry_column"] == "geom"
+
+    def test_1991_geometry_column(self):
+        """1991 should use geom as geometry_column."""
+        assert CENSUS_CONFIG["1991"]["geometry_column"] == "geom"
+
     def test_2022_has_required_entities(self):
         """2022 should have HOGAR, PERSONA, VIVIENDA entities."""
         entities = CENSUS_CONFIG["2022"]["entities"]

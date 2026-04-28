@@ -56,25 +56,45 @@ def build_geo_filter(geo_level, geo_filters, geo_id_col="COD_2022"):
     return geo_filter, query_params
 
 
-def build_spatial_filter(bbox):
+def build_spatial_filter(bbox, geometry_column="geometry", use_bbox_column=True):
     """
     Construir fragmento SQL de filtro de bounding box espacial.
 
+    Usa filtro en dos etapas para máximo rendimiento:
+    1. Filtro por columna bbox (predicate pushdown a parquet)
+    2. Filtro ST_Intersects preciso (solo en filas que pasan etapa 1)
+
     Args:
         bbox: Tupla de (xmin, ymin, xmax, ymax) en EPSG:4326
+        geometry_column: Nombre de la columna de geometría (default "geometry")
+        use_bbox_column: Si usar columna bbox para pushdown (default True)
 
     Returns:
-        str: Fragmento SQL con condición ST_Intersects, o string vacío si bbox es None
+        str: Fragmento SQL con condiciones de filtro, o string vacío si bbox es None
     """
     if not bbox:
         return ""
 
     xmin, ymin, xmax, ymax = bbox
+
+    filters = []
+
+    # Etapa 1: Filtro por columna bbox (predicate pushdown a parquet)
+    # Esto permite a DuckDB saltar row groups sin cargar geometrías
+    if use_bbox_column:
+        filters.append(
+            f"(bbox.xmax >= {xmin} AND bbox.xmin <= {xmax} "
+            f"AND bbox.ymax >= {ymin} AND bbox.ymin <= {ymax})"
+        )
+
+    # Etapa 2: Filtro ST_Intersects preciso
     # DuckDB spatial doesn't support SRID parameter in ST_GeomFromText
     bbox_wkt = (
         f"POLYGON(({xmin} {ymin}, {xmax} {ymin}, {xmax} {ymax}, {xmin} {ymax}, {xmin} {ymin}))"
     )
-    return f" AND ST_Intersects(geometry, ST_GeomFromText('{bbox_wkt}'))"
+    filters.append(f"ST_Intersects({geometry_column}, ST_GeomFromText('{bbox_wkt}'))")
+
+    return " AND " + " AND ".join(filters)
 
 
 def build_pivot_columns(variable_codes, variable_categories_map):

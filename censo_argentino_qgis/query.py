@@ -615,6 +615,7 @@ def load_census_layer(
     # Obtener configuración para el año
     config = CENSUS_CONFIG[year]
     geo_id_col = config["geo_id_column"]
+    geom_col = config.get("geometry_column", "geometry")
     radios_url = config["urls"]["radios"]
     census_url = config["urls"]["census"]
 
@@ -741,7 +742,7 @@ def load_census_layer(
 
         # PHASE 4.3: Build filters using query_builders functions
         geo_filter, geo_params = build_geo_filter(geo_level, geo_filters, geo_id_col=geo_id_col)
-        spatial_filter = build_spatial_filter(bbox)
+        spatial_filter = build_spatial_filter(bbox, geometry_column=geom_col)
 
         # PHASE 4.4: Build CTE-based query (FIXES CARTESIAN PRODUCT BUG)
         # Step 1: Build pivot columns SQL using category expansion
@@ -770,7 +771,7 @@ def load_census_layer(
 
             query = f"""
                 WITH filtered_radios AS (
-                    SELECT {geo_id_col}, PROV, DEPTO, FRACC, RADIO, geometry
+                    SELECT {geo_id_col}, PROV, DEPTO, FRACC, RADIO, {geom_col} as geometry
                     FROM '{radios_url}'
                     WHERE 1=1 {geo_filter} {spatial_filter}
                 ),
@@ -798,7 +799,7 @@ def load_census_layer(
 
             query = f"""
                 WITH filtered_radios AS (
-                    SELECT {geo_id_col}, geometry
+                    SELECT {geo_id_col}, {geom_col} as geometry
                     FROM '{radios_url}'
                     WHERE 1=1 {geo_filter} {spatial_filter}
                 ),
