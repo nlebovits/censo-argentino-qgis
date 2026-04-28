@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.7.0] - 2026-04-28
 
 ### ⚠️ CAMBIO IMPORTANTE
 - **Requiere Python >= 3.10**: DuckDB 1.5.0+ no soporta Python 3.9. QGIS 3.28+ incluye Python 3.10+
