@@ -10,6 +10,7 @@ from qgis.utils import iface
 from .config import AVAILABLE_YEARS
 from .query import (
     calculate_column_count,
+    get_cache_dir,
     get_cached_data,
     get_geographic_codes,
     get_variable_categories,
@@ -146,6 +147,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.btnDocs.clicked.connect(self.on_docs_clicked)
         self.btnTroubleshooting.clicked.connect(self.on_troubleshooting_clicked)
         self.btnReportBug.clicked.connect(self.on_report_bug_clicked)
+        self.btnClearCache.clicked.connect(self.on_clear_cache_clicked)
 
         # Initialize SQL tab
         self.init_sql_tab()
@@ -170,6 +172,9 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
 
         # Bug button - tools-report-bug icon
         self.btnReportBug.setIcon(QIcon.fromTheme("tools-report-bug"))
+
+        # Clear cache button - edit-clear icon
+        self.btnClearCache.setIcon(QIcon.fromTheme("edit-clear"))
 
     def init_year_combo(self):
         """Initialize year dropdown with available census years"""
@@ -853,3 +858,33 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         QgsMessageLog.logMessage(
             f"Abriendo página de reporte de bugs: {issues_url}", "Censo Argentino", Qgis.Info
         )
+
+    def on_clear_cache_clicked(self):
+        """Clear all cached metadata to force reload from server"""
+        import shutil
+
+        cache_dir = get_cache_dir()
+        try:
+            if cache_dir.exists():
+                shutil.rmtree(cache_dir)
+                cache_dir.mkdir(parents=True, exist_ok=True)
+            QMessageBox.information(
+                self,
+                "Caché limpiado",
+                "El caché se ha eliminado correctamente.\n\n"
+                "Los datos se recargarán desde el servidor en el próximo uso.",
+            )
+            QgsMessageLog.logMessage(
+                f"Caché limpiado: {cache_dir}", "Censo Argentino", Qgis.Info
+            )
+            # Reload data to refresh UI
+            self.load_data_async()
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Error",
+                f"No se pudo limpiar el caché:\n{str(e)}",
+            )
+            QgsMessageLog.logMessage(
+                f"Error limpiando caché: {e}", "Censo Argentino", Qgis.Warning
+            )
