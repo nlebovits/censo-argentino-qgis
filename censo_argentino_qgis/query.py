@@ -265,32 +265,33 @@ def get_geographic_codes(year="2022", geo_level="PROV", progress_callback=None):
             progress_callback(50, f"Cargando códigos de {geo_level}...")
 
         # Define queries based on geographic level (usando URL dinámica)
+        # Usamos CAST para manejar diferencias de tipos entre años (1991 usa DOUBLE/INTEGER, 2022 usa VARCHAR)
         geo_queries = {
             "PROV": f"""
                 SELECT DISTINCT
-                    c.valor_provincia as code,
+                    CAST(c.valor_provincia AS VARCHAR) as code,
                     c.etiqueta_provincia as label
                 FROM '{census_url}' c
                 ORDER BY c.valor_provincia
             """,
             "DEPTO": f"""
                 SELECT DISTINCT
-                    c.valor_provincia || '-' || c.valor_departamento as code,
+                    CAST(c.valor_provincia AS VARCHAR) || '-' || CAST(c.valor_departamento AS VARCHAR) as code,
                     c.etiqueta_provincia || ' - ' || c.etiqueta_departamento as label
                 FROM '{census_url}' c
                 ORDER BY c.valor_provincia, c.valor_departamento
             """,
             "FRACC": f"""
                 SELECT DISTINCT
-                    c.valor_provincia || '-' || c.valor_departamento || '-' || c.valor_fraccion as code,
-                    c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Fracc ' || c.valor_fraccion as label
+                    CAST(c.valor_provincia AS VARCHAR) || '-' || CAST(c.valor_departamento AS VARCHAR) || '-' || CAST(c.valor_fraccion AS VARCHAR) as code,
+                    c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Fracc ' || CAST(c.valor_fraccion AS VARCHAR) as label
                 FROM '{census_url}' c
                 ORDER BY c.valor_provincia, c.valor_departamento, c.valor_fraccion
             """,
             "RADIO": f"""
                 SELECT DISTINCT
                     c.id_geo as code,
-                    c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Radio ' || c.valor_radio as label
+                    c.etiqueta_provincia || ' - ' || c.etiqueta_departamento || ' - Radio ' || CAST(c.valor_radio AS VARCHAR) as label
                 FROM '{census_url}' c
                 ORDER BY c.valor_provincia, c.valor_departamento, c.valor_fraccion, c.valor_radio
             """,
