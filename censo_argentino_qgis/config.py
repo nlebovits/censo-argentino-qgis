@@ -21,7 +21,25 @@ CENSUS_CONFIG = {
             "radios": f"{BASE_URL}/2010/radios.parquet",
         },
     },
+    "2001": {
+        "geo_id_column": "COD_2001",
+        "entities": ["HOGAR", "PERSONA", "VIVIENDA"],
+        "urls": {
+            "census": f"{BASE_URL}/2001/census-data.parquet",
+            "metadata": f"{BASE_URL}/2001/metadata.parquet",
+            "radios": f"{BASE_URL}/2001/radios.parquet",
+        },
+    },
+    "1991": {
+        "geo_id_column": "COD_1991",
+        "entities": ["HOGAR", "PERSONA", "VIVIENDA"],
+        "urls": {
+            "census": f"{BASE_URL}/1991/census-data.parquet",
+            "metadata": f"{BASE_URL}/1991/metadata.parquet",
+            "radios": f"{BASE_URL}/1991/radios.parquet",
+        },
+    },
 }
 
 # Años disponibles en orden (más reciente primero)
-AVAILABLE_YEARS = ["2022", "2010"]
+AVAILABLE_YEARS = ["2022", "2010", "2001", "1991"]

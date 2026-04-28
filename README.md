@@ -1,6 +1,6 @@
 # Plugin de Censo Argentino para QGIS
 
-Plugin de QGIS para cargar datos del [Censo Nacional 2022](https://source.coop/nlebovits/censo-argentino) del INDEC desde Source.Coop (licencia CC-BY-4.0).
+Plugin de QGIS para cargar datos de los censos nacionales argentinos (1991, 2001, 2010, 2022) del INDEC desde [Source.Coop](https://source.coop/nlebovits/censo-argentino) (licencia CC-BY-4.0).
 
 [![Documentation](https://img.shields.io/badge/docs-mkdocs-blue)](https://nlebovits.github.io/censo-argentino-qgis/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)

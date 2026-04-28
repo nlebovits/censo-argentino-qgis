@@ -61,7 +61,7 @@ skips = [
 [tool.codespell]
 skip = ".git,.venv,venv,htmlcov,site,*.parquet,docs/*,CLAUDE.md,*.ui"
 # Palabras españolas que codespell confunde con inglés
-ignore-words-list = "datas,accesible,oficial,termine,convencional,comandos,extensiones,funcional,clases,administrar,requiere,instale,visibles,hace,aplicable,falso,autor,ser"
+ignore-words-list = "datas,accesible,oficial,termine,convencional,comandos,extensiones,funcional,clases,administrar,requiere,instale,visibles,hace,aplicable,falso,autor,ser,te"
 
 [tool.deptry]
 exclude = [".venv", "venv", "tests"]

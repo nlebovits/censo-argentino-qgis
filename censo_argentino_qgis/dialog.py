@@ -25,41 +25,42 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "dialog.u
 EXAMPLE_QUERIES = {
     "-- Seleccionar un ejemplo --": "",
     "Población total por radio": """-- Las vistas 'radios' y 'census' cambian según el año seleccionado
--- Para 2022 usa COD_2022, para 2010 usa COD_2010 automáticamente
+-- El plugin usa automáticamente COD_XXXX según el año (1991, 2001, 2010, 2022)
 SELECT
     c.id_geo as geo_id,
     ST_AsText(g.geometry) as wkt,
     c.conteo as total_pop
 FROM census c
-JOIN radios g ON c.id_geo = COALESCE(g.COD_2022, g.COD_2010)
+JOIN radios g ON c.id_geo = g.COD_XXXX  -- Reemplazar XXXX con el año
 WHERE c.codigo_variable LIKE '%POB_TOT%'
 LIMIT 1000""",
     "Comparar dos variables (plantilla de ratio)": """-- Reemplazar VAR_A y VAR_B con códigos de variable reales
--- Las vistas cambian según el año seleccionado
+-- El plugin usa automáticamente COD_XXXX según el año (1991, 2001, 2010, 2022)
 SELECT
     a.id_geo as geo_id,
     ST_AsText(g.geometry) as wkt,
     (a.conteo::float / NULLIF(b.conteo, 0)) * 100 as ratio
 FROM census a
 JOIN census b ON a.id_geo = b.id_geo AND b.codigo_variable = 'VAR_B'
-JOIN radios g ON a.id_geo = COALESCE(g.COD_2022, g.COD_2010)
+JOIN radios g ON a.id_geo = g.COD_XXXX  -- Reemplazar XXXX con el año
 WHERE a.codigo_variable = 'VAR_A'
 LIMIT 1000""",
-    "Agregar a nivel departamental": """SELECT
+    "Agregar a nivel departamental": """-- El plugin usa automáticamente COD_XXXX según el año (1991, 2001, 2010, 2022)
+SELECT
     c.valor_provincia || '-' || c.valor_departamento as geo_id,
     ST_AsText(ST_Union_Agg(g.geometry)) as wkt,
     SUM(c.conteo) as total
 FROM census c
-JOIN radios g ON c.id_geo = COALESCE(g.COD_2022, g.COD_2010)
+JOIN radios g ON c.id_geo = g.COD_XXXX  -- Reemplazar XXXX con el año
 WHERE c.codigo_variable LIKE '%POB_TOT%'
 GROUP BY c.valor_provincia, c.valor_departamento""",
-    "Filtrar por provincia": """-- Las vistas cambian según el año seleccionado
+    "Filtrar por provincia": """-- El plugin usa automáticamente COD_XXXX según el año (1991, 2001, 2010, 2022)
 SELECT
     c.id_geo as geo_id,
     ST_AsText(g.geometry) as wkt,
     c.conteo as poblacion
 FROM census c
-JOIN radios g ON c.id_geo = COALESCE(g.COD_2022, g.COD_2010)
+JOIN radios g ON c.id_geo = g.COD_XXXX  -- Reemplazar XXXX con el año
 WHERE c.codigo_variable LIKE '%POB_TOT%'
   AND c.etiqueta_provincia LIKE '%Buenos Aires%'
 LIMIT 1000""",

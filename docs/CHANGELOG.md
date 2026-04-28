@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+### Agregado
+- **Soporte para Censos 1991 y 2001**: Plugin ahora accede a datos de los 4 censos nacionales (1991, 2001, 2010, 2022)
+- **Cobertura censal completa**: 35+ años de datos censales argentinos disponibles
+
+### Mejorado
+- **Documentación actualizada**: README, guía de usuario y ejemplos SQL reflejan los 4 años disponibles
+- **Ejemplos SQL genéricos**: Los ejemplos ahora usan placeholder `COD_XXXX` en lugar de COALESCE hardcodeado
+
+### Técnico
+- Configuración CENSUS_CONFIG extendida con 1991 y 2001
+- Tests ampliados para validar configuración de los 4 censos
+
 ## [0.6.0] - 2025-02-02
 
 ### Agregado

@@ -15,7 +15,7 @@ Interfaz visual para seleccionar y cargar datos del censo.
 
 | Opción | Descripción |
 |--------|-------------|
-| **Año** | Año del censo (actualmente solo 2022) |
+| **Año** | Año del censo: 1991, 2001, 2010 o 2022 |
 | **Nivel geográfico** | Radio Censal, Fracción, Departamento o Provincia |
 | **Tipo de entidad** | Filtra las variables disponibles: Hogar, Persona o Vivienda |
 
