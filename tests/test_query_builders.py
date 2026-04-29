@@ -16,87 +16,121 @@ class TestBuildGeoFilter:
 
     def test_returns_empty_when_no_filters(self):
         """Should return empty filter and params when geo_filters is empty."""
-        filter_sql, params = build_geo_filter("PROV", [])
+        filter_sql, params, census_filter, census_params = build_geo_filter("PROV", [])
         assert filter_sql == ""
         assert params == []
+        assert census_filter == ""
+        assert census_params == []
 
     def test_returns_empty_when_filters_none(self):
         """Should return empty filter and params when geo_filters is None."""
-        filter_sql, params = build_geo_filter("PROV", None)
+        filter_sql, params, census_filter, census_params = build_geo_filter("PROV", None)
         assert filter_sql == ""
         assert params == []
+        assert census_filter == ""
+        assert census_params == []
 
     def test_builds_prov_filter_single(self):
-        """Should build PROV IN filter for single province."""
-        filter_sql, params = build_geo_filter("PROV", ["02"])
+        """Should build PROV IN filter for single province with census prov_code filter."""
+        filter_sql, params, census_filter, census_params = build_geo_filter("PROV", ["02"])
         assert "PROV IN (?)" in filter_sql
         assert params == ["02"]
+        assert "prov_code IN (?)" in census_filter
+        assert census_params == [2]
 
     def test_builds_prov_filter_multiple(self):
-        """Should build PROV IN filter for multiple provinces."""
-        filter_sql, params = build_geo_filter("PROV", ["02", "06", "14"])
+        """Should build PROV IN filter for multiple provinces with census prov_code filter."""
+        filter_sql, params, census_filter, census_params = build_geo_filter(
+            "PROV", ["02", "06", "14"]
+        )
         assert "PROV IN (?, ?, ?)" in filter_sql
         assert params == ["02", "06", "14"]
+        assert "prov_code IN (?, ?, ?)" in census_filter
+        assert census_params == [2, 6, 14]
 
     def test_builds_depto_filter_single(self):
-        """Should build DEPTO filter parsing PROV-DEPTO format."""
-        filter_sql, params = build_geo_filter("DEPTO", ["02-007"])
+        """Should build DEPTO filter parsing PROV-DEPTO format (no census filter)."""
+        filter_sql, params, census_filter, census_params = build_geo_filter("DEPTO", ["02-007"])
         assert "(PROV = ? AND DEPTO = ?)" in filter_sql
         assert params == ["02", "007"]
+        assert census_filter == ""
+        assert census_params == []
 
     def test_builds_depto_filter_multiple(self):
         """Should build DEPTO filter with OR for multiple departments."""
-        filter_sql, params = build_geo_filter("DEPTO", ["02-007", "06-014"])
+        filter_sql, params, census_filter, census_params = build_geo_filter(
+            "DEPTO", ["02-007", "06-014"]
+        )
         assert "(PROV = ? AND DEPTO = ?)" in filter_sql
         assert " OR " in filter_sql
         assert params == ["02", "007", "06", "014"]
+        assert census_filter == ""
+        assert census_params == []
 
     def test_ignores_malformed_depto_codes(self):
         """Should ignore DEPTO codes that don't have exactly 2 parts."""
-        filter_sql, params = build_geo_filter("DEPTO", ["02", "02-007", "invalid-code-extra"])
+        filter_sql, params, census_filter, census_params = build_geo_filter(
+            "DEPTO", ["02", "02-007", "invalid-code-extra"]
+        )
         # Should only include the valid "02-007"
         assert params == ["02", "007"]
 
     def test_builds_fracc_filter_single(self):
-        """Should build FRACC filter parsing PROV-DEPTO-FRACC format."""
-        filter_sql, params = build_geo_filter("FRACC", ["02-007-01"])
+        """Should build FRACC filter parsing PROV-DEPTO-FRACC format (no census filter)."""
+        filter_sql, params, census_filter, census_params = build_geo_filter("FRACC", ["02-007-01"])
         assert "(PROV = ? AND DEPTO = ? AND FRACC = ?)" in filter_sql
         assert params == ["02", "007", "01"]
+        assert census_filter == ""
+        assert census_params == []
 
     def test_builds_fracc_filter_multiple(self):
         """Should build FRACC filter with OR for multiple fracciones."""
-        filter_sql, params = build_geo_filter("FRACC", ["02-007-01", "06-014-02"])
+        filter_sql, params, census_filter, census_params = build_geo_filter(
+            "FRACC", ["02-007-01", "06-014-02"]
+        )
         assert "(PROV = ? AND DEPTO = ? AND FRACC = ?)" in filter_sql
         assert " OR " in filter_sql
         assert params == ["02", "007", "01", "06", "014", "02"]
+        assert census_filter == ""
+        assert census_params == []
 
     def test_ignores_malformed_fracc_codes(self):
         """Should ignore FRACC codes that don't have exactly 3 parts."""
-        filter_sql, params = build_geo_filter("FRACC", ["02-007", "02-007-01", "bad"])
+        filter_sql, params, census_filter, census_params = build_geo_filter(
+            "FRACC", ["02-007", "02-007-01", "bad"]
+        )
         # Should only include the valid "02-007-01"
         assert params == ["02", "007", "01"]
 
     def test_builds_radio_filter_single(self):
-        """Should build RADIO filter using COD_2022 by default."""
-        filter_sql, params = build_geo_filter("RADIO", ["020070101"])
+        """Should build RADIO filter using COD_2022 by default (no census filter)."""
+        filter_sql, params, census_filter, census_params = build_geo_filter("RADIO", ["020070101"])
         assert "COD_2022 IN (?)" in filter_sql
         assert params == ["020070101"]
+        assert census_filter == ""
+        assert census_params == []
 
     def test_builds_radio_filter_multiple(self):
         """Should build RADIO filter for multiple radios."""
-        filter_sql, params = build_geo_filter("RADIO", ["020070101", "060140201"])
+        filter_sql, params, census_filter, census_params = build_geo_filter(
+            "RADIO", ["020070101", "060140201"]
+        )
         assert "COD_2022 IN (?, ?)" in filter_sql
         assert params == ["020070101", "060140201"]
+        assert census_filter == ""
+        assert census_params == []
 
     def test_builds_radio_filter_with_cod_2010(self):
         """Should build RADIO filter using COD_2010 when specified."""
-        filter_sql, params = build_geo_filter("RADIO", ["020010101"], geo_id_col="COD_2010")
+        filter_sql, params, census_filter, census_params = build_geo_filter(
+            "RADIO", ["020010101"], geo_id_col="COD_2010"
+        )
         assert "COD_2010 IN (?)" in filter_sql
         assert params == ["020010101"]
 
     def test_builds_radio_filter_custom_geo_id_col(self):
         """Should support custom geo_id_col parameter."""
-        filter_sql, params = build_geo_filter(
+        filter_sql, params, census_filter, census_params = build_geo_filter(
             "RADIO", ["123456789", "987654321"], geo_id_col="COD_2010"
         )
         assert "COD_2010 IN (?, ?)" in filter_sql
@@ -105,7 +139,9 @@ class TestBuildGeoFilter:
     def test_sql_injection_safety_prov(self):
         """Should safely handle potential SQL injection in PROV filters."""
         # Attempt SQL injection - should be safely parameterized
-        filter_sql, params = build_geo_filter("PROV", ["02'; DROP TABLE census; --"])
+        filter_sql, params, census_filter, census_params = build_geo_filter(
+            "PROV", ["02'; DROP TABLE census; --"]
+        )
         assert "PROV IN (?)" in filter_sql
         assert params == ["02'; DROP TABLE census; --"]
         # The malicious input is in params, not in SQL string
@@ -113,10 +149,12 @@ class TestBuildGeoFilter:
     def test_sql_injection_safety_depto(self):
         """Should safely handle potential SQL injection in DEPTO filters."""
         # Test with valid DEPTO format but with SQL injection attempt
-        filter_sql, params = build_geo_filter("DEPTO", ["02'; DROP TABLE--007"])
+        filter_sql, params, census_filter, census_params = build_geo_filter(
+            "DEPTO", ["02'; DROP TABLE--007"]
+        )
         # Malformed code (3 dashes instead of 1) gets filtered out, so empty result
         # Let's use a properly formatted code
-        filter_sql, params = build_geo_filter("DEPTO", ["02-007"])
+        filter_sql, params, census_filter, census_params = build_geo_filter("DEPTO", ["02-007"])
         # Even though the format is valid, any SQL would be safely parameterized
         assert "(PROV = ? AND DEPTO = ?)" in filter_sql
         assert params == ["02", "007"]

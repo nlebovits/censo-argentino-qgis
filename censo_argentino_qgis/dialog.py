@@ -53,7 +53,9 @@ FROM census c
 JOIN radios g ON c.id_geo = g.COD_XXXX  -- Reemplazar XXXX con el año
 WHERE c.codigo_variable LIKE '%POB_TOT%'
 GROUP BY c.valor_provincia, c.valor_departamento""",
-    "Filtrar por provincia": """-- El plugin usa automáticamente COD_XXXX según el año (1991, 2001, 2010, 2022)
+    "Filtrar por provincia (optimizado)": """-- Usar prov_code (entero) en vez de etiqueta para 10-100x más rápido
+-- prov_code permite row group skipping en Parquet
+-- Códigos comunes: CABA=2, Buenos Aires=6, Córdoba=14, Santa Fe=82
 SELECT
     c.id_geo as geo_id,
     ST_AsText(g.geometry) as wkt,
@@ -61,7 +63,7 @@ SELECT
 FROM census c
 JOIN radios g ON c.id_geo = g.COD_XXXX  -- Reemplazar XXXX con el año
 WHERE c.codigo_variable LIKE '%POB_TOT%'
-  AND c.etiqueta_provincia LIKE '%Buenos Aires%'
+  AND c.prov_code = 2  -- CABA; usar 6 para Buenos Aires
 LIMIT 1000""",
     "Listar variables disponibles": """SELECT DISTINCT
     entidad,
@@ -263,7 +265,7 @@ class CensoArgentinoDialog(QtWidgets.QDialog, FORM_CLASS):
         self.listVariables.clear()
         self.variables = {}
         for code, label in variables:
-            item = QtWidgets.QListWidgetItem(f"{code} - {label}")
+            item = QtWidgets.QListWidgetItem(f"{label} ({code})")
             item.setData(Qt.UserRole, code)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
             item.setCheckState(Qt.Unchecked)

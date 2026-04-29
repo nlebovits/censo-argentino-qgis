@@ -11,20 +11,37 @@ def build_geo_filter(geo_level, geo_filters, geo_id_col="COD_2022"):
         geo_id_col: Nombre de la columna de ID geográfico (COD_2022 o COD_2010)
 
     Returns:
-        tuple: (fragmento_sql_filtro, lista_parámetros)
-            fragmento_sql_filtro será string vacío si no hay filtros
-            lista_parámetros contiene valores a vincular a placeholders
+        tuple: (radios_filter, radios_params, census_filter, census_params)
+            radios_filter: SQL para filtrar radios.parquet (usa PROV varchar)
+            radios_params: parámetros para radios_filter
+            census_filter: SQL para filtrar census-data.parquet (usa prov_code int)
+            census_params: parámetros para census_filter (enteros)
+            Filtros vacíos si no hay geo_filters
     """
     if not geo_filters or len(geo_filters) == 0:
-        return "", []
+        return "", [], "", []
 
     query_params = []
     geo_filter = ""
+    census_filter = ""
+    census_params = []
 
     if geo_level == "PROV":
         placeholders = ", ".join(["?" for _ in geo_filters])
         geo_filter = f" AND PROV IN ({placeholders})"
         query_params.extend(geo_filters)
+        # prov_code filter for census-data row group skipping (10-100x faster)
+        # Safe conversion: skip malformed codes that don't convert to int
+        valid_prov_codes = []
+        for code in geo_filters:
+            try:
+                valid_prov_codes.append(int(code))
+            except (ValueError, TypeError):
+                pass
+        if valid_prov_codes:
+            prov_placeholders = ", ".join(["?" for _ in valid_prov_codes])
+            census_filter = f" AND prov_code IN ({prov_placeholders})"
+            census_params = valid_prov_codes
 
     elif geo_level == "DEPTO":
         # Parse "PROV-DEPTO" format
@@ -53,7 +70,7 @@ def build_geo_filter(geo_level, geo_filters, geo_id_col="COD_2022"):
         geo_filter = f" AND {geo_id_col} IN ({placeholders})"
         query_params.extend(geo_filters)
 
-    return geo_filter, query_params
+    return geo_filter, query_params, census_filter, census_params
 
 
 def build_spatial_filter(bbox, geometry_column="geometry"):

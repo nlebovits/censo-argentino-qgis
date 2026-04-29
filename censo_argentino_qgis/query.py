@@ -669,15 +669,18 @@ def load_census_layer(
         geo_config_level = geo_config_map[geo_level]
 
         # PHASE 4.3: Build filters using query_builders functions
-        geo_filter, geo_params = build_geo_filter(geo_level, geo_filters, geo_id_col=geo_id_col)
+        geo_filter, geo_params, census_prov_filter, census_prov_params = build_geo_filter(
+            geo_level, geo_filters, geo_id_col=geo_id_col
+        )
         spatial_filter = build_spatial_filter(bbox, geometry_column=geom_col)
 
         # PHASE 4.4: Build CTE-based query (FIXES CARTESIAN PRODUCT BUG)
         # Step 1: Build pivot columns SQL using category expansion
         pivot_sql = build_pivot_columns(variable_codes, variable_categories_map)
 
-        # Step 2: Build query parameters (variables first, then geo filters)
-        query_params = list(variable_codes) + geo_params
+        # Step 2: Build query parameters (variables first, then geo filters, then census prov filter)
+        # Census prov_code filter params go after variable codes in JOIN condition
+        query_params = list(variable_codes) + census_prov_params + geo_params
 
         # Step 3: Build variable filter for CTE
         variable_placeholders = ", ".join(["?" for _ in variable_codes])
@@ -709,7 +712,7 @@ def load_census_layer(
                         {pivot_sql}
                     FROM filtered_radios r
                     LEFT JOIN '{census_url}' c
-                        ON r.{geo_id_col} = c.id_geo AND {census_where_clause}
+                        ON r.{geo_id_col} = c.id_geo AND {census_where_clause}{census_prov_filter}
                     GROUP BY r.PROV, r.DEPTO, r.FRACC, r.RADIO
                 )
                 SELECT
@@ -737,7 +740,7 @@ def load_census_layer(
                         {pivot_sql}
                     FROM filtered_radios r
                     LEFT JOIN '{census_url}' c
-                        ON r.{geo_id_col} = c.id_geo AND {census_where_clause}
+                        ON r.{geo_id_col} = c.id_geo AND {census_where_clause}{census_prov_filter}
                     GROUP BY r.{geo_id_col}
                 )
                 SELECT
