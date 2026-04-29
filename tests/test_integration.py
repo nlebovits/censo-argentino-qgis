@@ -170,11 +170,13 @@ class TestQueryBuilders:
     """Test query builder helper functions."""
 
     def test_build_geo_filter_with_provincia(self):
-        """Should build correct provincia filter."""
-        filter_sql, params = build_geo_filter("PROV", ["02", "06"])
+        """Should build correct provincia filter with prov_code optimization."""
+        filter_sql, params, census_filter, census_params = build_geo_filter("PROV", ["02", "06"])
 
         assert "PROV IN (?, ?)" in filter_sql
         assert params == ["02", "06"]
+        assert "prov_code IN (?, ?)" in census_filter
+        assert census_params == [2, 6]
 
     def test_build_spatial_filter_creates_polygon(self):
         """Should create proper ST_Intersects with POLYGON."""
