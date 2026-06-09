@@ -44,6 +44,9 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
+      - name: Actualizar pip
+        run: python -m pip install --upgrade pip
+
       - name: Instalar dependencias
         run: pip install -r requirements-dev.txt
 
@@ -51,10 +54,7 @@ jobs:
         run: bandit -r censo_argentino_qgis -c pyproject.toml
 
       - name: Auditar dependencias
-        run: |
-          # CVE-2026-3219: pip 26.0.1 vulnerability
-          # Remove ignore after 2026-06-01 when upstream fix expected
-          pip-audit --ignore-vuln CVE-2026-3219
+        run: pip-audit
 
   dead-code:
     name: Código Muerto y Complejidad
@@ -130,7 +130,7 @@ jobs:
 
       - name: Subir cobertura a Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           file: ./coverage.xml
           flags: unittests
