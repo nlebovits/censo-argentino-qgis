@@ -678,9 +678,11 @@ def load_census_layer(
         # Step 1: Build pivot columns SQL using category expansion
         pivot_sql = build_pivot_columns(variable_codes, variable_categories_map)
 
-        # Step 2: Build query parameters (variables first, then geo filters, then census prov filter)
-        # Census prov_code filter params go after variable codes in JOIN condition
-        query_params = list(variable_codes) + census_prov_params + geo_params
+        # Step 2: Build query parameters in SQL template order:
+        # 1. geo_params (for geo_filter in filtered_radios WHERE clause)
+        # 2. variable_codes (for census_where_clause in JOIN condition)
+        # 3. census_prov_params (for census_prov_filter in JOIN condition)
+        query_params = geo_params + list(variable_codes) + census_prov_params
 
         # Step 3: Build variable filter for CTE
         variable_placeholders = ", ".join(["?" for _ in variable_codes])
