@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.8.1] - 2026-07-02
+
+### Corregido
+- **Carga sin DuckDB**: El plugin ya no falla al cargar con un traceback crudo (`ModuleNotFoundError: No module named 'duckdb'`) cuando DuckDB no está instalado. El import de `dialog`/`query` ahora es perezoso, así que `classFactory()` siempre tiene éxito y el chequeo amigable de DuckDB es alcanzable.
+- **Ayuda para QGIS Flatpak**: El diálogo de error detecta entornos Flatpak (Python de solo lectura) y muestra instrucciones específicas para instalar DuckDB (`flatpak run --command=python3 org.qgis.qgis -m pip install --user 'duckdb>=1.5.0'`).
+
 ## [0.7.2] - 2026-04-28
 
 ### Corregido
