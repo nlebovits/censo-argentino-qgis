@@ -26,7 +26,7 @@ repos:
         # Skip Spanish docs and UI files to avoid false positives
         args: [
           --skip, ".git,.venv,venv,htmlcov,site,*.parquet,docs/*,CLAUDE.md,*.ui",
-          --ignore-words-list, "datas,accesible,oficial,termine,convencional,comandos,extensiones,funcional,clases,administrar,requiere,instale,visibles,hace,aplicable,falso,autor,ser",
+          --ignore-words-list, "datas,accesible,oficial,termine,convencional,comandos,extensiones,funcional,clases,administrar,requiere,instale,visibles,hace,aplicable,falso,autor,ser,importan,posible,considere",
         ]
         exclude: ^docs/
 

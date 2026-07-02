@@ -1,9 +1,14 @@
 import os
+import sys
 
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
 
-from .dialog import CensoArgentinoDialog
+# NOTA: No importar .dialog (ni .query) a nivel de módulo. Esos módulos
+# importan `duckdb`, que puede no estar instalado (p. ej. en QGIS Flatpak).
+# Un import eager haría fallar classFactory() con un traceback crudo y
+# dejaría inalcanzable el chequeo amigable de abajo. El import se hace de
+# forma perezosa en run(), recién después de verificar DuckDB.
 
 MINIMUM_DUCKDB_VERSION = (1, 5, 0)
 
@@ -20,6 +25,11 @@ def check_duckdb_version():
         return True, version_str
     except ImportError:
         return False, None
+
+
+def _is_flatpak():
+    """Detectar si QGIS corre dentro de un sandbox Flatpak."""
+    return bool(os.environ.get("FLATPAK_ID")) or sys.prefix.startswith("/app")
 
 
 class CensoArgentinoPlugin:
@@ -51,30 +61,49 @@ class CensoArgentinoPlugin:
         version_ok, current_version = check_duckdb_version()
         if not version_ok:
             min_ver = ".".join(str(x) for x in MINIMUM_DUCKDB_VERSION)
+            pip_flag = "--upgrade " if current_version else ""
             if current_version:
-                msg = (
+                encabezado = (
                     f"<b>DuckDB {current_version} es demasiado antiguo.</b><br><br>"
                     f"Este plugin requiere DuckDB >= {min_ver} para soporte de GeoParquet 2.0.<br><br>"
-                    f"<b>Para actualizar, ejecute en la consola de Python de QGIS:</b><br>"
-                    f"<code>import subprocess, sys<br>"
-                    f"subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'duckdb'])</code><br><br>"
-                    f"Luego reinicie QGIS."
                 )
             else:
-                msg = (
+                encabezado = (
                     f"<b>DuckDB no está instalado.</b><br><br>"
                     f"Este plugin requiere DuckDB >= {min_ver}.<br><br>"
-                    f"<b>Para instalar, ejecute en la consola de Python de QGIS:</b><br>"
-                    f"<code>import subprocess, sys<br>"
-                    f"subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'duckdb'])</code><br><br>"
-                    f"Luego reinicie QGIS."
                 )
+
+            if _is_flatpak():
+                instrucciones = (
+                    "<b>Está usando QGIS vía Flatpak.</b> El entorno Python de QGIS "
+                    "es de solo lectura, así que debe instalar DuckDB en su carpeta "
+                    "de usuario.<br><br>"
+                    "<b>1) Abra una terminal y ejecute:</b><br>"
+                    f"<code>flatpak run --command=python3 org.qgis.qgis \\<br>"
+                    f"&nbsp;&nbsp;-m pip install --user {pip_flag}'duckdb>={min_ver}'</code><br><br>"
+                    "<b>2) Reinicie QGIS.</b><br><br>"
+                    "Si tras reiniciar sigue sin detectarse, es posible que la carpeta "
+                    "de usuario no esté en el <code>sys.path</code> de QGIS; en ese caso "
+                    "considere instalar QGIS desde el paquete oficial de su distribución."
+                )
+            else:
+                instrucciones = (
+                    "<b>Para instalar, ejecute en la consola de Python de QGIS:</b><br>"
+                    "<code>import subprocess, sys<br>"
+                    f"subprocess.check_call([sys.executable, '-m', 'pip', 'install', "
+                    f"{'--upgrade, ' if current_version else ''}'duckdb'])</code><br><br>"
+                    "Luego reinicie QGIS."
+                )
+
             QMessageBox.critical(
                 self.iface.mainWindow(),
-                "Censo Argentino - Versión de DuckDB Insuficiente",
-                msg,
+                "Censo Argentino - DuckDB no disponible",
+                encabezado + instrucciones,
             )
             return
+
+        # Import perezoso: recién ahora sabemos que DuckDB está disponible.
+        from .dialog import CensoArgentinoDialog
 
         if self.dialog is None:
             self.dialog = CensoArgentinoDialog()
